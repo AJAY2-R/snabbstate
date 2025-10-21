@@ -162,6 +162,12 @@ patch(vnode, newVnode); // Snabbdom efficiently updates the old view to the new 
   - [elm : Element](#elm--element)
   - [key : string | number](#key--string--number)
 - [Structuring applications](#structuring-applications)
+- [State Management with Hooks](#state-management-with-hooks)
+  - [`useState`](#usestate)
+  - [`useEffect`](#useeffect)
+  - [`useRef`](#useref)
+  - [`useMemo`](#usememo)
+- [Creating Components](#creating-components)
 
 * [Related packages](#related-packages)
 
@@ -1061,3 +1067,122 @@ const vnode1 = h("div", [
 
 Pull requests that the community may care to provide feedback on should be
 merged after such an opportunity of a few days was provided.
+
+## State Management with Hooks
+
+Snabbstate extends Snabbdom with React-like hooks for managing component state and side effects. The following hooks are available:
+
+### useState
+
+Manages stateful values in components.
+
+```tsx
+function Counter() {
+  const [count, setCount] = useState(ctx, 0);
+
+  return h("div", [
+    h("p", `Count: ${count}`),
+    h("button", { on: { click: () => setCount(count + 1) } }, "Increment")
+  ]);
+}
+```
+
+### useEffect
+
+Handles side effects in components.
+
+```tsx
+function DataFetcher() {
+  const [data, setData] = useState(ctx, null);
+
+  useEffect(ctx, () => {
+    fetch("/api/data")
+      .then((res) => res.json())
+      .then(setData);
+
+    return () => {
+      // cleanup if needed
+    };
+  }, []); // Empty deps array means run once on mount
+
+  return h("div", data ? JSON.stringify(data) : "Loading...");
+}
+```
+
+### useRef
+
+Maintains mutable values that don't trigger re-renders.
+
+```tsx
+function FocusInput() {
+  const inputRef = useRef(ctx, null);
+
+  useEffect(ctx, () => {
+    inputRef.current?.focus();
+  }, []);
+
+  return h("input", {
+    props: { id: "input" },
+    hook: {
+      insert: () => {
+        inputRef.current = document.getElementById("input");
+      }
+    }
+  });
+}
+```
+
+### useMemo
+
+Memoizes expensive computations.
+
+```tsx
+function ExpensiveList({ items }) {
+  const sortedItems = useMemo(
+    ctx,
+    () => items.sort((a, b) => a.localeCompare(b)),
+    [items]
+  );
+
+  return h(
+    "ul",
+    sortedItems.map((item) => h("li", item))
+  );
+}
+```
+
+## Creating Components
+
+Components can be defined using the `defineComponent` helper:
+
+```tsx
+import { defineComponent, useState } from "snabbstate";
+
+const Counter = defineComponent((props, ctx) => {
+  const [count, setCount] = useState(ctx, props.initial || 0);
+
+  return h("div", [
+    h("p", `Count: ${count}`),
+    h(
+      "button",
+      {
+        on: { click: () => setCount(count + 1) }
+      },
+      "Increment"
+    )
+  ]);
+});
+
+// Usage
+const instance = Counter({ initial: 5 });
+patch(container, instance.vnode);
+```
+
+Components receive:
+
+- Props as the first argument
+- A hooks context as the second argument
+- Must return a VNode
+- Can use any of the available hooks
+- Have an `update()` method for manual re-renders
+- Have a `destroy()` method for cleanup
