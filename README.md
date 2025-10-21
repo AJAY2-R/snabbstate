@@ -70,38 +70,23 @@ customize the functionality you want.
 Basic Snabbstate usage with hooks:
 
 ```mjs
-import {
-  init,
-  classModule,
-  propsModule,
-  styleModule,
-  eventListenersModule,
-  h
-} from "snabbstate";
-import { defineComponent, useState } from "snabbstate";
 
-const patch = init([
-  classModule,
-  propsModule,
-  styleModule,
-  eventListenersModule
-]);
+import { jsx, patch, render, useState } from 'snabbstate';
+
 
 // Define a stateful component
-const Counter = defineComponent((props, ctx) => {
-  const [count, setCount] = useState(ctx, props.initial || 0);
-
-  return h("div#container", [
-    h("h1", `Count: ${count}`),
-    h("button", { on: { click: () => setCount(count + 1) } }, "Increment"),
-    h("button", { on: { click: () => setCount(count - 1) } }, "Decrement")
-  ]);
+const CounterApp = render((_, ctx) => {
+    const [count, setCount] = useState(ctx, 0);
+    return <div>
+        <h1>Counter: {count}</h1>
+        <button on={{ click: () => setCount(count + 1) }}>Increment</button>
+        <button on={{ click: () => setCount(count - 1) }}>Decrement</button>
+    </div>
 });
 
 // Create and mount the component
-const container = document.getElementById("app");
-const instance = Counter({ initial: 0 });
-patch(container, instance.vnode);
+const root = document.getElementById('app')
+patch(root!, <CounterApp />)
 ```
 
 Traditional usage (Snabbdom-style):
