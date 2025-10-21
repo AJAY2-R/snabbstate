@@ -1397,11 +1397,6 @@ const vnode1 = h("div", [
 ]);
 ```
 
-## Opportunity for community feedback
-
-Pull requests that the community may care to provide feedback on should be
-merged after such an opportunity of a few days was provided.
-
 ## State Management with Hooks
 
 Snabbstate extends Snabbdom with React-like hooks for managing component state and side effects. The following hooks are available:
@@ -2221,3 +2216,8 @@ The `renderFn` is invoked only if the `renderFn` is changed or `[stateArguments]
 
 The `key` is optional. It should be supplied when the `selector` is
 not unique among the thunks siblings. This ensures that the thunk is
+
+## Opportunity for community feedback
+
+Pull requests that the community may care to provide feedback on should be
+merged after such an opportunity of a few days was provided.

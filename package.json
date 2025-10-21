@@ -52,13 +52,11 @@
     "@web/dev-server-esbuild": "^1.0.4",
     "@web/test-runner": "^0.20.2",
     "@web/test-runner-browserstack": "^0.8.0",
-    "commithelper": "^1.2.0",
     "conventional-changelog-angular": "^8.0.0",
     "eslint": "9.36.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import-x": "^4.16.1",
-    "husky": "9.1.7",
     "lint-staged": "^16.2.3",
     "mocha": "11.7.3",
     "prettier": "^3.6.2",
@@ -100,5 +98,8 @@
         "examples"
       ]
     }
+  },
+  "dependencies": {
+    "husky": "^9.1.7"
   }
 }
