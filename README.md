@@ -1063,11 +1063,6 @@ const vnode1 = h("div", [
 ]);
 ```
 
-## Opportunity for community feedback
-
-Pull requests that the community may care to provide feedback on should be
-merged after such an opportunity of a few days was provided.
-
 ## State Management with Hooks
 
 Snabbstate extends Snabbdom with React-like hooks for managing component state and side effects. The following hooks are available:
@@ -1186,3 +1181,9 @@ Components receive:
 - Can use any of the available hooks
 - Have an `update()` method for manual re-renders
 - Have a `destroy()` method for cleanup
+
+
+## Opportunity for community feedback
+
+Pull requests that the community may care to provide feedback on should be
+merged after such an opportunity of a few days was provided.
