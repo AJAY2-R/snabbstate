@@ -1,11 +1,11 @@
 {
-  "name": "snabbdom",
-  "version": "3.6.3",
-  "description": "A virtual DOM library with focus on simplicity, modularity, powerful features and performance.",
-  "homepage": "https://github.com/snabbdom/snabbdom#readme",
+  "name": "snabbstate",
+  "version": "1.0.0",
+  "description": "A virtual DOM library with focus on simplicity, modularity, powerful features and performance. Snabbstate makes it easy to create fast and reactive web applications with minimal boilerplate.",
+  "homepage": "https://github.dev/AJAY2-R/snabbstate#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/snabbdom/snabbdom.git"
+    "url": "git+https://github.dev/AJAY2-R/snabbstate.git"
   },
   "keywords": [
     "virtual",
@@ -18,7 +18,7 @@
   "author": "Simon Friis Vindum",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/snabbdom/snabbdom/issues"
+    "url": "https://github.dev/AJAY2-R/snabbstate/issues"
   },
   "engines": {
     "node": ">=12.17.0"

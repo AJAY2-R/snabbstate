@@ -1,20 +1,21 @@
-<img alt="Snabbdom" src="https://raw.githubusercontent.com/snabbdom/snabbdom/master/readme-title.svg" width="356px">
-
-A virtual DOM library with a focus on simplicity, modularity, powerful features
-and performance.
+A virtual DOM library with React-like hooks for state management, forked from Snabbdom with a focus on simplicity, modularity, powerful features and performance.
 
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/snabbdom/snabbdom/actions/workflows/test.yml/badge.svg)](https://github.com/snabbdom/snabbdom/actions/workflows/test.yml)
-[![npm version](https://badge.fury.io/js/snabbdom.svg)](https://badge.fury.io/js/snabbdom)
-[![npm downloads](https://img.shields.io/npm/dm/snabbdom.svg)](https://www.npmjs.com/package/snabbdom)
-[![Join the chat at https://gitter.im/snabbdom/snabbdom](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/snabbdom/snabbdom?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![Donate to our collective](https://opencollective.com/snabbdom/donate/button@2x.png?color=blue)](https://opencollective.com/snabbdom#section-contribute)
+## About Snabbstate
 
-Thanks to [Browserstack](https://www.browserstack.com/) for providing access to
-their great cross-browser testing tools.
+Snabbstate is a fork of the excellent [Snabbdom](https://github.com/snabbdom/snabbdom) virtual DOM library, extended with React-like hooks for state management. We are deeply grateful to the Snabbdom team and contributors for creating such a solid foundation.
+
+**What Snabbstate adds:**
+
+- React-like hooks (`useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`)
+- Component definition system with `defineComponent`
+- Automatic state management and re-rendering
+- All the power and performance of Snabbdom's core
+
+**Credits:** Snabbstate is built upon [Snabbdom](https://github.com/snabbdom/snabbdom) by Simon Friis Vindum and contributors. The core virtual DOM implementation and module system remain largely unchanged from the original.
 
 ---
 
@@ -23,31 +24,34 @@ English | [简体中文](./README-zh_CN.md) | [Hindi](./README-in_HN.md)
 ## Introduction
 
 Virtual DOM is awesome. It allows us to express our application's view
-as a function of its state. But existing solutions were way too
-bloated, too slow, lacked features, had an API biased towards OOP
-, and/or lacked features I needed.
+as a function of its state. Snabbdom (the library we forked from) provided an extremely simple, performant, and extensible core. Snabbstate builds on this foundation by adding React-like hooks for state management, making it even easier to build reactive applications.
 
-Snabbdom consists of an extremely simple, performant, and extensible
-core that is only ≈ 200 SLOC. It offers a modular architecture with
-rich functionality for extensions through custom modules. To keep the
-core simple, all non-essential functionality is delegated to modules.
+Snabbstate consists of:
 
-You can mold Snabbdom into whatever you desire! Pick, choose, and
-customize the functionality you want. Alternatively you can just use
-the default extensions and get a virtual DOM library with high
-performance, small size, and all the features listed below.
+- An extremely simple, performant core (≈ 200 SLOC from Snabbdom)
+- A modular architecture with rich functionality through custom modules
+- React-like hooks for state management
+- Component definition system
+
+You can mold Snabbstate into whatever you desire! Pick, choose, and
+customize the functionality you want.
 
 ## Features
 
-- Core features
-  - About 200 SLOC – you could easily read through the entire core and fully
+- Core features (from Snabbdom)
+  - About 200 SLOC core – you could easily read through the entire core and fully
     understand how it works.
   - Extendable through modules.
   - A rich set of hooks available, both per vnode and globally for modules,
     to hook into any part of the diff and patch process.
-  - Splendid performance. Snabbdom is among the fastest virtual DOM libraries.
+  - Splendid performance. Built on Snabbdom's fast virtual DOM implementation.
   - Patch function with a function signature equivalent to a reduce/scan
     function. Allows for easier integration with a FRP library.
+- Extended features (Snabbstate additions)
+  - React-like hooks: `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
+  - `defineComponent` for creating stateful components
+  - Automatic re-rendering when state changes
+  - Built-in hooks context management
 - Features in modules
   - `h` function for easily creating virtual DOM nodes.
   - [SVG _just works_ with the `h` helper](#svg).
@@ -63,6 +67,8 @@ performance, small size, and all the features listed below.
 
 ## Example
 
+Basic Snabbstate usage with hooks:
+
 ```mjs
 import {
   init,
@@ -71,16 +77,36 @@ import {
   styleModule,
   eventListenersModule,
   h
-} from "snabbdom";
+} from "snabbstate";
+import { defineComponent, useState } from "snabbstate";
 
 const patch = init([
-  // Init patch function with chosen modules
-  classModule, // makes it easy to toggle classes
-  propsModule, // for setting properties on DOM elements
-  styleModule, // handles styling on elements with support for animations
-  eventListenersModule // attaches event listeners
+  classModule,
+  propsModule,
+  styleModule,
+  eventListenersModule
 ]);
 
+// Define a stateful component
+const Counter = defineComponent((props, ctx) => {
+  const [count, setCount] = useState(ctx, props.initial || 0);
+
+  return h("div#container", [
+    h("h1", `Count: ${count}`),
+    h("button", { on: { click: () => setCount(count + 1) } }, "Increment"),
+    h("button", { on: { click: () => setCount(count - 1) } }, "Decrement")
+  ]);
+});
+
+// Create and mount the component
+const container = document.getElementById("app");
+const instance = Counter({ initial: 0 });
+patch(container, instance.vnode);
+```
+
+Traditional usage (Snabbdom-style):
+
+```mjs
 const container = document.getElementById("container");
 
 const vnode = h(
@@ -92,7 +118,6 @@ const vnode = h(
     h("a", { props: { href: "/foo" } }, "I'll take you places!")
   ]
 );
-// Patch into empty DOM element – this modifies the DOM as a side effect
 patch(container, vnode);
 
 const newVnode = h(
@@ -108,8 +133,7 @@ const newVnode = h(
     h("a", { props: { href: "/bar" } }, "I'll take you places!")
   ]
 );
-// Second `patch` invocation
-patch(vnode, newVnode); // Snabbdom efficiently updates the old view to the new state
+patch(vnode, newVnode);
 ```
 
 ## More examples
@@ -122,6 +146,14 @@ patch(vnode, newVnode); // Snabbdom efficiently updates the old view to the new 
 
 ## Table of contents
 
+- [State Management with Hooks](#state-management-with-hooks)
+  - [`useState`](#usestate)
+  - [`useEffect`](#useeffect)
+  - [`useRef`](#useref)
+  - [`useMemo`](#usememo)
+  - [`useCallback`](#usecallback)
+  - [`useElementRef`](#useelementref)
+- [Creating Components](#creating-components)
 - [Core documentation](#core-documentation)
   - [`init`](#init)
   - [`patch`](#patch)
@@ -174,9 +206,260 @@ patch(vnode, newVnode); // Snabbdom efficiently updates the old view to the new 
 - [Common errors](#common-errors)
 - [Opportunity for community feedback](#opportunity-for-community-feedback)
 
+## State Management with Hooks
+
+Snabbstate extends the Snabbdom core with React-like hooks for managing component state and side effects. The following hooks are available:
+
+### useState
+
+Manages stateful values in components. When the setter is called, it triggers a component re-render.
+
+```tsx
+import { defineComponent, useState } from "snabbstate";
+
+const Counter = defineComponent((props, ctx) => {
+  const [count, setCount] = useState(ctx, 0);
+
+  return h("div", [
+    h("p", `Count: ${count}`),
+    h("button", { on: { click: () => setCount(count + 1) } }, "Increment")
+  ]);
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `initial`: Initial state value
+
+**Returns:** `[state, setState]` tuple
+
+### useEffect
+
+Handles side effects in components. Runs after rendering and optionally cleans up before the next effect or unmount.
+
+```tsx
+const DataFetcher = defineComponent((props, ctx) => {
+  const [data, setData] = useState(ctx, null);
+
+  useEffect(ctx, () => {
+    fetch("/api/data")
+      .then((res) => res.json())
+      .then(setData);
+
+    return () => {
+      // cleanup function (optional)
+      console.log("Effect cleanup");
+    };
+  }, []); // Dependencies array
+
+  return h("div", data ? JSON.stringify(data) : "Loading...");
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `callback`: Function to run after render; may return a cleanup function
+- `deps`: Optional array of dependencies to control when the effect runs
+
+### useRef
+
+Maintains mutable values that don't trigger re-renders when changed. Useful for storing DOM references or any mutable values.
+
+```tsx
+const FocusInput = defineComponent((props, ctx) => {
+  const inputRef = useRef(ctx, null);
+
+  useEffect(ctx, () => {
+    inputRef.current?.focus();
+  }, []);
+
+  return h("input", {
+    props: { id: "myInput" },
+    hook: {
+      insert: (vnode) => {
+        inputRef.current = vnode.elm;
+      }
+    }
+  });
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `initial`: Initial value for the ref's `.current` property
+
+**Returns:** Ref object with a `.current` property
+
+### useMemo
+
+Memoizes expensive computations. Only recomputes when dependencies change.
+
+```tsx
+const ExpensiveList = defineComponent((props, ctx) => {
+  const sortedItems = useMemo(ctx, () => {
+    console.log("Sorting items...");
+    return props.items.sort((a, b) => a.localeCompare(b));
+  }, [props.items]);
+
+  return h(
+    "ul",
+    sortedItems.map((item) => h("li", item))
+  );
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `factory`: Function that returns the value to memoize
+- `deps`: Optional array of dependencies
+
+**Returns:** Memoized value
+
+### useCallback
+
+Memoizes callback functions. Only recreates the function when dependencies change. Useful for passing stable function references to child components.
+
+```tsx
+const ParentComponent = defineComponent((props, ctx) => {
+  const [count, setCount] = useState(ctx, 0);
+
+  const handleClick = useCallback(ctx, () => {
+    console.log("Count is:", count);
+    setCount(count + 1);
+  }, [count]);
+
+  return h("button", { on: { click: handleClick } }, "Click me");
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `fn`: Callback function to memoize
+- `deps`: Optional array of dependencies
+
+**Returns:** Memoized callback function
+
+### useElementRef
+
+Helper hook that combines `useRef` and `useEffect` to get a reference to a DOM element by its ID.
+
+```tsx
+const MyComponent = defineComponent((props, ctx) => {
+  const divRef = useElementRef(ctx, "myDiv");
+
+  useEffect(ctx, () => {
+    if (divRef.current) {
+      console.log("Div dimensions:", divRef.current.offsetWidth);
+    }
+  }, []);
+
+  return h("div#myDiv", "Hello, World!");
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `id`: ID of the element to reference
+
+**Returns:** Ref object with a `.current` property
+
+## Creating Components
+
+Components are defined using the `defineComponent` helper, which handles the hooks context and re-rendering automatically.
+
+```tsx
+import { defineComponent, useState, useEffect } from "snabbstate";
+import { h } from "snabbstate";
+
+const TodoList = defineComponent((props, ctx) => {
+  const [todos, setTodos] = useState(ctx, props.initialTodos || []);
+  const [newTodo, setNewTodo] = useState(ctx, "");
+
+  const addTodo = () => {
+    if (newTodo.trim()) {
+      setTodos([...todos, { id: Date.now(), text: newTodo, done: false }]);
+      setNewTodo("");
+    }
+  };
+
+  const toggleTodo = (id) => {
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, done: !todo.done } : todo
+      )
+    );
+  };
+
+  return h("div", [
+    h("h1", "Todo List"),
+    h("input", {
+      props: { value: newTodo },
+      on: {
+        input: (e) => setNewTodo(e.target.value),
+        keydown: (e) => e.key === "Enter" && addTodo()
+      }
+    }),
+    h("button", { on: { click: addTodo } }, "Add"),
+    h(
+      "ul",
+      todos.map((todo) =>
+        h(
+          "li",
+          {
+            key: todo.id,
+            style: { textDecoration: todo.done ? "line-through" : "none" },
+            on: { click: () => toggleTodo(todo.id) }
+          },
+          todo.text
+        )
+      )
+    )
+  ]);
+});
+
+// Usage
+const container = document.getElementById("app");
+const instance = TodoList({ initialTodos: [] });
+patch(container, instance.vnode);
+```
+
+**Component lifecycle:**
+
+Components created with `defineComponent` return an instance object with:
+
+- `vnode`: The virtual node to patch into the DOM
+- `update()`: Method to manually trigger a re-render
+- `destroy()`: Method to clean up the component
+
+```tsx
+const instance = MyComponent({ someProp: "value" });
+
+// Mount the component
+patch(container, instance.vnode);
+
+// Manually trigger update if needed
+instance.update();
+
+// Clean up when done
+instance.destroy();
+```
+
+**Rules for using hooks:**
+
+1. Only call hooks inside `defineComponent` functions
+2. Always pass the `ctx` (HooksContext) as the first argument
+3. Call hooks in the same order on every render
+4. Don't call hooks inside loops, conditions, or nested functions
+
 ## Core documentation
 
-The core of Snabbdom provides only the most essential functionality.
+The core of Snabbstate (inherited from Snabbdom) provides the essential virtual DOM functionality.
 It is designed to be as simple as possible while still being fast and
 extendable.
 
@@ -976,10 +1259,61 @@ object with a `.key` property with the value of `1`.
 
 ## Structuring applications
 
-Snabbdom is a low-level virtual DOM library. It is unopinionated with
-regards to how you should structure your application.
+Snabbstate is unopinionated about application structure, but the hooks system makes it natural to build component-based applications.
 
-Here are some approaches to building applications with Snabbdom.
+**Recommended patterns:**
+
+```tsx
+// 1. Component composition
+const Button = defineComponent((props, ctx) => {
+  return h(
+    "button",
+    { on: { click: props.onClick }, class: { primary: props.primary } },
+    props.label
+  );
+});
+
+const App = defineComponent((props, ctx) => {
+  const [count, setCount] = useState(ctx, 0);
+
+  return h("div", [
+    h("h1", `Count: ${count}`),
+    Button({
+      label: "Increment",
+      primary: true,
+      onClick: () => setCount(count + 1)
+    }).vnode
+  ]);
+});
+
+// 2. Custom hooks
+function useLocalStorage(ctx, key, initialValue) {
+  const [value, setValue] = useState(
+    ctx,
+    localStorage.getItem(key) || initialValue
+  );
+
+  useEffect(ctx, () => {
+    localStorage.setItem(key, value);
+  }, [value]);
+
+  return [value, setValue];
+}
+
+// 3. State lifting
+const Parent = defineComponent((props, ctx) => {
+  const [sharedState, setSharedState] = useState(ctx, 0);
+
+  return h("div", [
+    Child1({ value: sharedState, onChange: setSharedState }).vnode,
+    Child2({ value: sharedState }).vnode
+  ]);
+});
+```
+
+**Related projects and inspirations:**
+
+Snabbstate is inspired by React's hooks API and builds upon Snabbdom's solid foundation. For other approaches to building applications with virtual DOM:
 
 - [functional-frontend-architecture](https://github.com/paldepind/functional-frontend-architecture) –
   a repository containing several example applications that
@@ -1074,25 +1408,34 @@ Snabbstate extends Snabbdom with React-like hooks for managing component state a
 
 ### useState
 
-Manages stateful values in components.
+Manages stateful values in components. When the setter is called, it triggers a component re-render.
 
 ```tsx
-function Counter() {
+import { defineComponent, useState } from "snabbstate";
+
+const Counter = defineComponent((props, ctx) => {
   const [count, setCount] = useState(ctx, 0);
 
   return h("div", [
     h("p", `Count: ${count}`),
     h("button", { on: { click: () => setCount(count + 1) } }, "Increment")
   ]);
-}
+});
 ```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `initial`: Initial state value
+
+**Returns:** `[state, setState]` tuple
 
 ### useEffect
 
-Handles side effects in components.
+Handles side effects in components. Runs after rendering and optionally cleans up before the next effect or unmount.
 
 ```tsx
-function DataFetcher() {
+const DataFetcher = defineComponent((props, ctx) => {
   const [data, setData] = useState(ctx, null);
 
   useEffect(ctx, () => {
@@ -1101,20 +1444,27 @@ function DataFetcher() {
       .then(setData);
 
     return () => {
-      // cleanup if needed
+      // cleanup function (optional)
+      console.log("Effect cleanup");
     };
-  }, []); // Empty deps array means run once on mount
+  }, []); // Dependencies array
 
   return h("div", data ? JSON.stringify(data) : "Loading...");
-}
+});
 ```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `callback`: Function to run after render; may return a cleanup function
+- `deps`: Optional array of dependencies to control when the effect runs
 
 ### useRef
 
-Maintains mutable values that don't trigger re-renders.
+Maintains mutable values that don't trigger re-renders when changed. Useful for storing DOM references or any mutable values.
 
 ```tsx
-function FocusInput() {
+const FocusInput = defineComponent((props, ctx) => {
   const inputRef = useRef(ctx, null);
 
   useEffect(ctx, () => {
@@ -1122,67 +1472,752 @@ function FocusInput() {
   }, []);
 
   return h("input", {
-    props: { id: "input" },
+    props: { id: "myInput" },
     hook: {
-      insert: () => {
-        inputRef.current = document.getElementById("input");
+      insert: (vnode) => {
+        inputRef.current = vnode.elm;
       }
     }
   });
-}
+});
 ```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `initial`: Initial value for the ref's `.current` property
+
+**Returns:** Ref object with a `.current` property
 
 ### useMemo
 
-Memoizes expensive computations.
+Memoizes expensive computations. Only recomputes when dependencies change.
 
 ```tsx
-function ExpensiveList({ items }) {
-  const sortedItems = useMemo(
-    ctx,
-    () => items.sort((a, b) => a.localeCompare(b)),
-    [items]
-  );
+const ExpensiveList = defineComponent((props, ctx) => {
+  const sortedItems = useMemo(ctx, () => {
+    console.log("Sorting items...");
+    return props.items.sort((a, b) => a.localeCompare(b));
+  }, [props.items]);
 
   return h(
     "ul",
     sortedItems.map((item) => h("li", item))
   );
-}
+});
 ```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `factory`: Function that returns the value to memoize
+- `deps`: Optional array of dependencies
+
+**Returns:** Memoized value
+
+### useCallback
+
+Memoizes callback functions. Only recreates the function when dependencies change. Useful for passing stable function references to child components.
+
+```tsx
+const ParentComponent = defineComponent((props, ctx) => {
+  const [count, setCount] = useState(ctx, 0);
+
+  const handleClick = useCallback(ctx, () => {
+    console.log("Count is:", count);
+    setCount(count + 1);
+  }, [count]);
+
+  return h("button", { on: { click: handleClick } }, "Click me");
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `fn`: Callback function to memoize
+- `deps`: Optional array of dependencies
+
+**Returns:** Memoized callback function
+
+### useElementRef
+
+Helper hook that combines `useRef` and `useEffect` to get a reference to a DOM element by its ID.
+
+```tsx
+const MyComponent = defineComponent((props, ctx) => {
+  const divRef = useElementRef(ctx, "myDiv");
+
+  useEffect(ctx, () => {
+    if (divRef.current) {
+      console.log("Div dimensions:", divRef.current.offsetWidth);
+    }
+  }, []);
+
+  return h("div#myDiv", "Hello, World!");
+});
+```
+
+**Parameters:**
+
+- `ctx`: HooksContext for the current component instance
+- `id`: ID of the element to reference
+
+**Returns:** Ref object with a `.current` property
 
 ## Creating Components
 
-Components can be defined using the `defineComponent` helper:
+Components are defined using the `defineComponent` helper, which handles the hooks context and re-rendering automatically.
 
 ```tsx
-import { defineComponent, useState } from "snabbstate";
+import { defineComponent, useState, useEffect } from "snabbstate";
+import { h } from "snabbstate";
 
-const Counter = defineComponent((props, ctx) => {
-  const [count, setCount] = useState(ctx, props.initial || 0);
+const TodoList = defineComponent((props, ctx) => {
+  const [todos, setTodos] = useState(ctx, props.initialTodos || []);
+  const [newTodo, setNewTodo] = useState(ctx, "");
+
+  const addTodo = () => {
+    if (newTodo.trim()) {
+      setTodos([...todos, { id: Date.now(), text: newTodo, done: false }]);
+      setNewTodo("");
+    }
+  };
+
+  const toggleTodo = (id) => {
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, done: !todo.done } : todo
+      )
+    );
+  };
 
   return h("div", [
-    h("p", `Count: ${count}`),
+    h("h1", "Todo List"),
+    h("input", {
+      props: { value: newTodo },
+      on: {
+        input: (e) => setNewTodo(e.target.value),
+        keydown: (e) => e.key === "Enter" && addTodo()
+      }
+    }),
+    h("button", { on: { click: addTodo } }, "Add"),
     h(
-      "button",
-      {
-        on: { click: () => setCount(count + 1) }
-      },
-      "Increment"
+      "ul",
+      todos.map((todo) =>
+        h(
+          "li",
+          {
+            key: todo.id,
+            style: { textDecoration: todo.done ? "line-through" : "none" },
+            on: { click: () => toggleTodo(todo.id) }
+          },
+          todo.text
+        )
+      )
     )
   ]);
 });
 
 // Usage
-const instance = Counter({ initial: 5 });
+const container = document.getElementById("app");
+const instance = TodoList({ initialTodos: [] });
 patch(container, instance.vnode);
 ```
 
-Components receive:
+**Component lifecycle:**
 
-- Props as the first argument
-- A hooks context as the second argument
-- Must return a VNode
-- Can use any of the available hooks
-- Have an `update()` method for manual re-renders
-- Have a `destroy()` method for cleanup
+Components created with `defineComponent` return an instance object with:
+
+- `vnode`: The virtual node to patch into the DOM
+- `update()`: Method to manually trigger a re-render
+- `destroy()`: Method to clean up the component
+
+```tsx
+const instance = MyComponent({ someProp: "value" });
+
+// Mount the component
+patch(container, instance.vnode);
+
+// Manually trigger update if needed
+instance.update();
+
+// Clean up when done
+instance.destroy();
+```
+
+**Rules for using hooks:**
+
+1. Only call hooks inside `defineComponent` functions
+2. Always pass the `ctx` (HooksContext) as the first argument
+3. Call hooks in the same order on every render
+4. Don't call hooks inside loops, conditions, or nested functions
+
+## Core documentation
+
+The core of Snabbstate (inherited from Snabbdom) provides the essential virtual DOM functionality.
+It is designed to be as simple as possible while still being fast and
+extendable.
+
+### `init`
+
+The core exposes only one single function `init`. This `init`
+takes a list of modules and returns a `patch` function that uses the
+specified set of modules.
+
+```mjs
+import { classModule, styleModule } from "snabbdom";
+
+const patch = init([classModule, styleModule]);
+```
+
+### `patch`
+
+The `patch` function returned by `init` takes two arguments. The first
+is a DOM element or a vnode representing the current view. The second
+is a vnode representing the new, updated view.
+
+If a DOM element with a parent is passed, `newVnode` will be turned
+into a DOM node, and the passed element will be replaced by the
+created DOM node. If an old vnode is passed, Snabbdom will efficiently
+modify it to match the description in the new vnode.
+
+Any old vnode passed must be the resulting vnode from a previous call
+to `patch`. This is necessary since Snabbdom stores information in the
+vnode. This makes it possible to implement a simpler and more
+performant architecture. This also avoids the creation of a new old
+vnode tree.
+
+```mjs
+patch(oldVnode, newVnode);
+```
+
+#### Unmounting
+
+While there is no API specifically for removing a VNode tree from its mount point element, one way of almost achieving this is providing a comment VNode as the second argument to `patch`, such as:
+
+```mjs
+patch(
+  oldVnode,
+  h("!", {
+    hooks: {
+      post: () => {
+        /* patch complete */
+      }
+    }
+  })
+);
+```
+
+Of course, then there is still a single comment node at the mount point.
+
+### `h`
+
+It is recommended that you use `h` to create vnodes. It accepts a
+[tag/selector](#sel--string) as a string, an optional data object, and an
+optional string or an array of children.
+
+```mjs
+import { h } from "snabbdom";
+
+const vnode = h("div#container", { style: { color: "#000" } }, [
+  h("h1.primary-title", "Headline"),
+  h("p", "A paragraph")
+]);
+```
+
+### `fragment` (experimental)
+
+Caution: This feature is currently experimental and must be opted in.
+Its API may be changed without a major version bump.
+
+```mjs
+const patch = init(modules, undefined, {
+  experimental: {
+    fragments: true
+  }
+});
+```
+
+Creates a virtual node that will be converted to a document fragment containing the given children.
+
+```mjs
+import { fragment, h } from "snabbdom";
+
+const vnode = fragment(["I am", h("span", [" a", " fragment"])]);
+```
+
+### `toVNode`
+
+Converts a DOM node into a virtual node. Especially good for patching over pre-existing,
+server-side generated HTML content.
+
+```mjs
+import {
+  init,
+  styleModule,
+  attributesModule,
+  h,
+  toVNode
+} from "snabbdom";
+
+const patch = init([
+  // Initialize a `patch` function with the modules used by `toVNode`
+  attributesModule // handles attributes from the DOM node
+  datasetModule, // handles `data-*` attributes from the DOM node
+]);
+
+const newVNode = h("div", { style: { color: "#000" } }, [
+  h("h1", "Headline"),
+  h("p", "A paragraph"),
+  h("img", { attrs: { src: "sunrise.png", alt: "morning sunrise" } })
+]);
+
+patch(toVNode(document.querySelector(".container")), newVNode);
+```
+
+### Hooks
+
+Hooks are a way to hook into the lifecycle of DOM nodes. Snabbdom
+offers a rich selection of hooks. Hooks are used both by modules to
+extend Snabbdom, and in normal code for executing arbitrary code at
+desired points in the life of a virtual node.
+
+#### Overview
+
+| Name        | Triggered when                                     | Arguments to callback   |
+| ----------- | -------------------------------------------------- | ----------------------- |
+| `pre`       | the patch process begins                           | none                    |
+| `init`      | a vnode has been added                             | `vnode`                 |
+| `create`    | a DOM element has been created based on a vnode    | `emptyVnode, vnode`     |
+| `insert`    | an element has been inserted into the DOM          | `vnode`                 |
+| `prepatch`  | an element is about to be patched                  | `oldVnode, vnode`       |
+| `update`    | an element is being updated                        | `oldVnode, vnode`       |
+| `postpatch` | an element has been patched                        | `oldVnode, vnode`       |
+| `destroy`   | an element is directly or indirectly being removed | `vnode`                 |
+| `remove`    | an element is directly being removed from the DOM  | `vnode, removeCallback` |
+| `post`      | the patch process is done                          | none                    |
+
+The following hooks are available for modules: `pre`, `create`,
+`update`, `destroy`, `remove`, `post`.
+
+The following hooks are available in the `hook` property of individual
+elements: `init`, `create`, `insert`, `prepatch`, `update`,
+`postpatch`, `destroy`, `remove`.
+
+#### Usage
+
+To use hooks, pass them as an object to `hook` field of the data
+object argument.
+
+```mjs
+h("div.row", {
+  key: movie.rank,
+  hook: {
+    insert: (vnode) => {
+      movie.elmHeight = vnode.elm.offsetHeight;
+    }
+  }
+});
+```
+
+#### The `init` hook
+
+This hook is invoked during the patch process when a new virtual node
+has been found. The hook is called before Snabbdom has processed the
+node in any way. I.e., before it has created a DOM node based on the
+vnode.
+
+#### The `insert` hook
+
+This hook is invoked once the DOM element for a vnode has been
+inserted into the document _and_ the rest of the patch cycle is done.
+This means that you can do DOM measurements (like using
+[getBoundingClientRect](https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect)
+in this hook safely, knowing that no elements will be changed
+afterwards that could affect the position of the inserted elements.
+
+#### The `remove` hook
+
+Allows you to hook into the removal of an element. The hook is called
+once a vnode is to be removed from the DOM. The handling function
+receives both the vnode and a callback. You can control and delay the
+removal with the callback. The callback should be invoked once the
+hook is done doing its business, and the element will only be removed
+once all `remove` hooks have invoked their callback.
+
+The hook is only triggered when an element is to be removed from its
+parent – not if it is the child of an element that is removed. For
+that, see the `destroy` hook.
+
+#### The `destroy` hook
+
+This hook is invoked on a virtual node when its DOM element is removed
+from the DOM or if its parent is being removed from the DOM.
+
+To see the difference between this hook and the `remove` hook,
+consider an example.
+
+```mjs
+const vnode1 = h("div", [h("div", [h("span", "Hello")])]);
+const vnode2 = h("div", []);
+patch(container, vnode1);
+patch(vnode1, vnode2);
+```
+
+Here `destroy` is triggered for both the inner `div` element _and_ the
+`span` element it contains. `remove`, on the other hand, is only
+triggered on the `div` element because it is the only element being
+detached from its parent.
+
+You can, for instance, use `remove` to trigger an animation when an
+element is being removed and use the `destroy` hook to additionally
+animate the disappearance of the removed element's children.
+
+### Creating modules
+
+Modules work by registering global listeners for [hooks](#hooks). A module is simply a dictionary mapping hook names to functions.
+
+```mjs
+const myModule = {
+  create: (oldVnode, vnode) => {
+    // invoked whenever a new virtual node is created
+  },
+  update: (oldVnode, vnode) => {
+    // invoked whenever a virtual node is updated
+  }
+};
+```
+
+With this mechanism you can easily augment the behaviour of Snabbdom.
+For demonstration, take a look at the implementations of the default
+modules.
+
+## Modules documentation
+
+This describes the core modules. All modules are optional. JSX examples assume you're using the [`jsx` pragma](#jsx) provided by this library.
+
+### The class module
+
+The class module provides an easy way to dynamically toggle classes on
+elements. It expects an object in the `class` data property. The
+object should map class names to booleans that indicate whether or
+not the class should stay or go on the vnode.
+
+```mjs
+h("a", { class: { active: true, selected: false } }, "Toggle");
+```
+
+In JSX, you can use `class` like this:
+
+```jsx
+<div class={{ foo: true, bar: true }} />
+// Renders as: <div class="foo bar"></div>
+```
+
+### The props module
+
+Allows you to set properties on DOM elements.
+
+```mjs
+h("a", { props: { href: "/foo" } }, "Go to Foo");
+```
+
+In JSX, you can use `props` like this:
+
+```jsx
+<input props={{ name: "foo" }} />
+// Renders as: <input name="foo" /> with input.name === "foo"
+```
+
+Properties can only be set. Not removed. Even though browsers allow addition and
+deletion of custom properties, deletion will not be attempted by this module.
+This makes sense, because native DOM properties cannot be removed. And
+if you are using custom properties for storing values or referencing
+objects on the DOM, then please consider using
+[data-\* attributes](https://developer.mozilla.org/en-US/docs/Learn/HTML/Howto/Use_data_attributes)
+instead. Perhaps via [the dataset module](#the-dataset-module).
+
+### The attributes module
+
+Same as props, but set attributes instead of properties on DOM elements.
+
+```mjs
+h("a", { attrs: { href: "/foo" } }, "Go to Foo");
+```
+
+In JSX, you can use `attrs` like this:
+
+```jsx
+<div attrs={{ "aria-label": "I'm a div" }} />
+// Renders as: <div aria-label="I'm a div"></div>
+```
+
+Attributes are added and updated using `setAttribute`. In case of an
+attribute that had been previously added/set and is no longer present
+in the `attrs` object, it is removed from the DOM element's attribute
+list using `removeAttribute`.
+
+In the case of boolean attributes (e.g. `disabled`, `hidden`,
+`selected` ...), the meaning doesn't depend on the attribute value
+(`true` or `false`) but depends instead on the presence/absence of the
+attribute itself in the DOM element. Those attributes are handled
+differently by the module: if a boolean attribute is set to a
+[falsy value](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)
+(`0`, `-0`, `null`, `false`,`NaN`, `undefined`, or the empty string
+(`""`)), then the attribute will be removed from the attribute list of
+the DOM element.
+
+### The dataset module
+
+Allows you to set custom data attributes (`data-*`) on DOM elements. These can then be accessed with the [HTMLElement.dataset](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset) property.
+
+```mjs
+h("button", { dataset: { action: "reset" } }, "Reset");
+```
+
+In JSX, you can use `dataset` like this:
+
+```jsx
+<div dataset={{ foo: "bar" }} />
+// Renders as: <div data-foo="bar"></div>
+```
+
+### The style module
+
+The style module is for making your HTML look slick and animate smoothly. At
+its core it allows you to set CSS properties on elements.
+
+```mjs
+h(
+  "span",
+  {
+    style: {
+      border: "1px solid #bada55",
+      color: "#c0ffee",
+      fontWeight: "bold"
+    }
+  },
+  "Say my name, and every colour illuminates"
+);
+```
+
+In JSX, you can use `style` like this:
+
+```jsx
+<div
+  style={{
+    border: "1px solid #bada55",
+    color: "#c0ffee",
+    fontWeight: "bold"
+  }}
+/>
+// Renders as: <div style="border: 1px solid #bada55; color: #c0ffee; font-weight: bold"></div>
+```
+
+#### Custom properties (CSS variables)
+
+CSS custom properties (aka CSS variables) are supported, they must be prefixed
+with `--`
+
+```mjs
+h(
+  "div",
+  {
+    style: { "--warnColor": "yellow" }
+  },
+  "Warning"
+);
+```
+
+#### Delayed properties
+
+You can specify properties as being delayed. Whenever these properties
+change, the change is not applied until after the next frame.
+
+```mjs
+h(
+  "span",
+  {
+    style: {
+      opacity: "0",
+      transition: "opacity 1s",
+      delayed: { opacity: "1" }
+    }
+  },
+  "Imma fade right in!"
+);
+```
+
+This makes it easy to declaratively animate the entry of elements.
+
+The `all` value of `transition-property` is not supported.
+
+#### Set properties on `remove`
+
+Styles set in the `remove` property will take effect once the element
+is about to be removed from the DOM. The applied styles should be
+animated with CSS transitions. Only once all the styles are done
+animating will the element be removed from the DOM.
+
+```mjs
+h(
+  "span",
+  {
+    style: {
+      opacity: "1",
+      transition: "opacity 1s",
+      remove: { opacity: "0" }
+    }
+  },
+  "It's better to fade out than to burn away"
+);
+```
+
+This makes it easy to declaratively animate the removal of elements.
+
+The `all` value of `transition-property` is not supported.
+
+#### Set properties on `destroy`
+
+```mjs
+h(
+  "span",
+  {
+    style: {
+      opacity: "1",
+      transition: "opacity 1s",
+      destroy: { opacity: "0" }
+    }
+  },
+  "It's better to fade out than to burn away"
+);
+```
+
+The `all` value of `transition-property` is not supported.
+
+### The eventlisteners module
+
+The event listeners module gives powerful capabilities for attaching
+event listeners.
+
+You can attach a function to an event on a vnode by supplying an
+object at `on` with a property corresponding to the name of the event
+you want to listen to. The function will be called when the event
+happens and will be passed to the event object that belongs to it.
+
+```mjs
+function clickHandler(ev) {
+  console.log("got clicked");
+}
+h("div", { on: { click: clickHandler } });
+```
+
+In JSX, you can use `on` like this:
+
+```js
+<div on={{ click: clickHandler }} />
+```
+
+Snabbdom allows swapping event handlers between renders. This happens without
+actually touching the event handlers attached to the DOM.
+
+Note, however, that **you should be careful when sharing event
+handlers between vnodes**, because of the technique this module uses
+to avoid re-binding event handlers to the DOM. (And in general,
+sharing data between vnodes is not guaranteed to work, because modules
+are allowed to mutate the given data).
+
+In particular, you should **not** do something like this:
+
+```mjs
+// Does not work
+const sharedHandler = {
+  change: (e) => {
+    console.log("you chose: " + e.target.value);
+  }
+};
+h("div", [
+  h("input", {
+    props: { type: "radio", name: "test", value: "0" },
+    on: sharedHandler
+  }),
+  h("input", {
+    props: { type: "radio", name: "test", value: "1" },
+    on: sharedHandler
+  }),
+  h("input", {
+    props: { type: "radio", name: "test", value: "2" },
+    on: sharedHandler
+  })
+]);
+```
+
+For many such cases, you can use array-based handlers instead (described above).
+Alternatively, simply make sure each node is passed unique `on` values:
+
+```mjs
+// Works
+const sharedHandler = (e) => {
+  console.log("you chose: " + e.target.value);
+};
+h("div", [
+  h("input", {
+    props: { type: "radio", name: "test", value: "0" },
+    on: { change: sharedHandler }
+  }),
+  h("input", {
+    props: { type: "radio", name: "test", value: "1" },
+    on: { change: sharedHandler }
+  }),
+  h("input", {
+    props: { type: "radio", name: "test", value: "2" },
+    on: { change: sharedHandler }
+  })
+]);
+```
+
+## SVG
+
+SVG just works when using the `h` function for creating virtual
+nodes. SVG elements are automatically created with the appropriate
+namespaces.
+
+```mjs
+const vnode = h("div", [
+  h("svg", { attrs: { width: 100, height: 100 } }, [
+    h("circle", {
+      attrs: {
+        cx: 50,
+        cy: 50,
+        r: 40,
+        stroke: "green",
+        "stroke-width": 4,
+        fill: "yellow"
+      }
+    })
+  ])
+});
+```
+
+See also the [SVG example](./examples/svg) and the [SVG Carousel example](./examples/carousel-svg/).
+
+### Classes in SVG Elements
+
+Certain browsers (like IE &lt;=11) [do not support `classList` property in SVG elements](http://caniuse.com/#feat=classlist).
+Because the _class_ module internally uses `classList`, it will not work in this case unless you use a [classList polyfill](https://www.npmjs.com/package/classlist-polyfill).
+(If you don't want to use a polyfill, you can use the `class` attribute with the _attributes_ module).
+
+## Thunks
+
+The `thunk` function takes a selector, a key for identifying a thunk,
+a function that returns a vnode and a variable amount of state
+parameters. If invoked, the render function will receive the state
+arguments.
+
+`thunk(selector, key, renderFn, [stateArguments])`
+
+The `renderFn` is invoked only if the `renderFn` is changed or `[stateArguments]` array length or its elements are changed.
+
+The `key` is optional. It should be supplied when the `selector` is
+not unique among the thunks siblings. This ensures that the thunk is
