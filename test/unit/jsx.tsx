@@ -270,6 +270,18 @@ describe("snabbdom", () => {
         key: undefined
       });
     });
+
+    it("works with className property", () => {
+      const vnode = <div className="foo bar" />;
+      assert.deepStrictEqual(vnode, {
+        sel: "div",
+        data: { className: "foo bar" },
+        children: [],
+        elm: undefined,
+        text: undefined,
+        key: undefined
+      });
+    });
   });
 
   describe("Fragment", () => {
