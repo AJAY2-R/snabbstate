@@ -22,7 +22,6 @@ export interface VNodeData<VNodeProps = Props> {
   props?: VNodeProps;
   attrs?: Attrs;
   class?: Classes;
-  className?: string;
   style?: VNodeStyle;
   dataset?: Dataset;
   on?: On;

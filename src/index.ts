@@ -40,7 +40,7 @@ export type { Dataset } from "./modules/dataset";
 export type { On } from "./modules/eventlisteners";
 export type { Props } from "./modules/props";
 export type { VNodeStyle } from "./modules/style";
-export * from "./reactive/index";
+
 // JSX
 export { jsx, Fragment } from "./jsx";
 export type { JsxVNodeChild, JsxVNodeChildren, FunctionComponent } from "./jsx";

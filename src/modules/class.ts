@@ -27,10 +27,6 @@ function updateClass(oldVnode: VNode, vnode: VNode): void {
       (elm.classList as any)[cur ? "add" : "remove"](name);
     }
   }
-  const className = (vnode.data as VNodeData).className || "";
-  if (className) {
-    elm.classList.add(...className.split(" ").filter((c) => c.length > 0));
-  }
 }
 
 export const classModule: Module = { create: updateClass, update: updateClass };
