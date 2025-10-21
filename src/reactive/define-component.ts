@@ -48,3 +48,12 @@ export function defineComponent<TProps>(componentFn: ComponentFn<TProps>) {
     };
   };
 }
+
+export function render<TProps>(componentFn: ComponentFn<TProps>) {
+    const createInstance = defineComponent(componentFn);
+    return function renderInstance(props: TProps): VNode {
+        const instance = createInstance(props);
+        return instance.vnode;
+    };
+}
+
