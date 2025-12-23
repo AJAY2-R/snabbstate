@@ -1,6 +1,6 @@
 {
   "name": "snabbstate",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "A virtual DOM library with focus on simplicity, modularity, powerful features and performance. Snabbstate makes it easy to create fast and reactive web applications with minimal boilerplate.",
   "homepage": "https://github.dev/AJAY2-R/snabbstate#readme",
   "repository": {

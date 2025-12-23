@@ -35,7 +35,7 @@ export function useState<T>(ctx: HooksContext, initial: T): IUseState<T> {
  */
 export function useEffect(
   ctx: HooksContext,
-  callback: () => void | (() => void),
+  callback: () => void | (() => void) | Promise<void> | Promise<() => void>,
   deps?: any[]
 ) {
   const index = ctx.hookIndex;

@@ -14,46 +14,95 @@ export const patch = init([
 ]);
 
 interface ComponentInstance {
+  ctx: HooksContext;
   vnode: VNode;
   update(): void;
   destroy(): void;
 }
 export type ComponentFn<TProps> = (props: TProps, ctx: HooksContext) => VNode;
 
+type ControlledHooksContext = HooksContext & {
+  __updateScheduled?: boolean; // internal control flag
+};
+
 export function defineComponent<TProps>(componentFn: ComponentFn<TProps>) {
   return function createInstance(props: TProps): ComponentInstance {
     let oldVNode: VNode | null = null;
+    let isMounted = false;
+    let isRendering = false;
+    let pendingUpdate = false;
+    let preventPatch = false;
+
     const elementNode = () => {
       return vnode;
     };
-    const ctx: HooksContext = {
+
+    const ctx = {
       hookStates: [],
       hookIndex: 0,
+      __updateScheduled: false,
       update() {
+        if (preventPatch) {
+          return;
+        }
+        if (isRendering) {
+          pendingUpdate = true;
+          return;
+        }
+
+        if (!isMounted) {
+          pendingUpdate = true;
+          return;
+        }
+
+        isRendering = true;
         ctx.hookIndex = 0;
-        const newVNode = componentFn(props, ctx);
-        if (!oldVNode) throw new Error("Old VNode is null during update");
-        oldVNode = patch(oldVNode, newVNode);
+
+        try {
+          const newVNode = componentFn(props, ctx);
+          oldVNode = patch(oldVNode as VNode, newVNode);
+        } finally {
+          isRendering = false;
+        }
+
+        if (pendingUpdate) {
+          pendingUpdate = false;
+          ctx.update();
+        }
       },
-      vNode: elementNode
-    };
+      vNode: elementNode,
+      preventPatch(state = true) {
+        preventPatch = state;
+      }
+    } as ControlledHooksContext;
+
+    ctx.hookIndex = 0;
     const vnode = componentFn(props, ctx);
     oldVNode = vnode;
+
+    isMounted = true;
+
+    if (pendingUpdate) {
+      pendingUpdate = false;
+      queueMicrotask(() => ctx.update());
+    }
+
     return {
       vnode,
+      ctx,
       update: ctx.update,
       destroy: () => {
         oldVNode = null;
+        isMounted = false;
       }
     };
   };
 }
 
 export function render<TProps>(componentFn: ComponentFn<TProps>) {
-    const createInstance = defineComponent(componentFn);
-    return function renderInstance(props: TProps): VNode {
-        const instance = createInstance(props);
-        return instance.vnode;
-    };
+  const createInstance = defineComponent(componentFn);
+  return function renderInstance(props: TProps): VNode {
+    const instance = createInstance(props);
+    return instance.vnode;
+  };
 }
-

@@ -272,10 +272,10 @@ describe("snabbdom", () => {
     });
 
     it("works with className property", () => {
-      const vnode = <div className="foo bar" />;
+      const vnode = <div className="foo bar" attrs={{ id: "test" }} />;
       assert.deepStrictEqual(vnode, {
         sel: "div",
-        data: { className: "foo bar" },
+        data: { className: "foo bar", attrs: { id: "test" } },
         children: [],
         elm: undefined,
         text: undefined,
