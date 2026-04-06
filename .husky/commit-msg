@@ -1,1 +1,0 @@
-./node_modules/.bin/commithelper check --file $1 --fix
