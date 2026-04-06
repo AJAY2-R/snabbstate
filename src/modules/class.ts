@@ -9,9 +9,11 @@ function updateClass(oldVnode: VNode, vnode: VNode): void {
   const elm: Element = vnode.elm as Element;
   let oldClass = (oldVnode.data as VNodeData).class;
   let klass = (vnode.data as VNodeData).class;
+  let oldClassName = (oldVnode.data as VNodeData).className || "";
+  let className = (vnode.data as VNodeData).className || "";
 
-  if (!oldClass && !klass) return;
-  if (oldClass === klass) return;
+  if (!oldClass && !klass && !oldClassName && !className) return;
+  if (oldClass === klass && oldClassName === className) return;
   oldClass = oldClass || {};
   klass = klass || {};
 
@@ -27,8 +29,10 @@ function updateClass(oldVnode: VNode, vnode: VNode): void {
       (elm.classList as any)[cur ? "add" : "remove"](name);
     }
   }
-  const className = (vnode.data as VNodeData).className || "";
-  if (className) {
+  if (className !== oldClassName) {
+    elm.classList.remove(
+      ...oldClassName.split(" ").filter((c) => c.length > 0)
+    );
     elm.classList.add(...className.split(" ").filter((c) => c.length > 0));
   }
 }
