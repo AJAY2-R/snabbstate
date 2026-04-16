@@ -290,10 +290,7 @@ export function defineComponent<T>(componentFn: ComponentFn<T>, displayName?: st
   };
 }
 
-export type ComponentRenderer<T> = (
-  props: ComponentProps<T>,
-  ...children: VNode[]
-) => VNode;
+export type ComponentRenderer<T> = (props?: ComponentProps<T>, ...children: VNode[]) => VNode;
 
 export function component<T>(componentFn: ComponentFn<T>): ComponentRenderer<T> {
   const createInstance = defineComponent(componentFn);
