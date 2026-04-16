@@ -18,8 +18,10 @@ import {
   type HooksContext
 } from "./models.js";
 import { useState, useEffect } from "./hooks.js";
-import { jsx } from "../../build/jsx.js";
-import { defineComponent, patch, render, VNode } from "../../build/index.js";
+import { getCurrentHooksContext } from "./hooks-context.js";
+import { jsx } from "../jsx.js";
+import { defineComponent, patch, component } from "./define-component.js";
+import { VNode } from "../vnode.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -121,8 +123,8 @@ describe("defineComponent › initial render", () => {
 
   it("isMounted() is false before DOM insertion", () => {
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       return jsx("div", {});
     };
     defineComponent(fn)({} as ComponentProps<{}>);
@@ -137,8 +139,8 @@ describe("defineComponent › initial render", () => {
 describe("defineComponent › mounting", () => {
   it("isMounted() becomes true after DOM insertion", () => {
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -148,8 +150,8 @@ describe("defineComponent › mounting", () => {
 
   it("onMounted callbacks are queued (not fired synchronously)", async () => {
     const cb = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctx.onMounted(cb);
+    const fn: ComponentFn<{}> = (_p) => {
+      getCurrentHooksContext().onMounted(cb);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -162,8 +164,8 @@ describe("defineComponent › mounting", () => {
 
   it("onMounted fires exactly once even after multiple re-renders", async () => {
     const cb = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctx.onMounted(cb);
+    const fn: ComponentFn<{}> = (_p) => {
+      getCurrentHooksContext().onMounted(cb);
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -184,8 +186,8 @@ describe("defineComponent › _syncUpdate", () => {
   it("re-renders immediately without waiting for a microtask", () => {
     let renderCount = 0;
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       renderCount++;
       return jsx("div", {});
     };
@@ -200,8 +202,8 @@ describe("defineComponent › _syncUpdate", () => {
   it("catches re-render errors without throwing", () => {
     let crash = false;
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       if (crash) throw new Error("re-render boom");
       return jsx("div", {});
     };
@@ -223,8 +225,8 @@ describe("defineComponent › batched updates", () => {
   it("coalesces multiple ctx.update() calls into one re-render per tick", async () => {
     let renderCount = 0;
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       renderCount++;
       return jsx("div", {});
     };
@@ -243,11 +245,49 @@ describe("defineComponent › batched updates", () => {
     cleanup();
   });
 
+  it("batches updates across multiple components in the same tick", async () => {
+    let renderCountA = 0;
+    let ctxA: HooksContext | null = null;
+    const fnA: ComponentFn<{}> = (_p) => {
+      ctxA = getCurrentHooksContext();
+      renderCountA++;
+      return jsx("div", {}, ["A"]);
+    };
+
+    let renderCountB = 0;
+    let ctxB: HooksContext | null = null;
+    const fnB: ComponentFn<{}> = (_p) => {
+      ctxB = getCurrentHooksContext();
+      renderCountB++;
+      return jsx("div", {}, ["B"]);
+    };
+
+    const compA = mountComponent(fnA, {});
+    const compB = mountComponent(fnB, {});
+    const baselineA = renderCountA;
+    const baselineB = renderCountB;
+
+    ctxA!.update();
+    ctxA!.update();
+    ctxA!.update();
+    ctxB!.update();
+    ctxB!.update();
+    ctxB!.update();
+
+    await flushAll();
+
+    expect(renderCountA).toBe(baselineA + 1);
+    expect(renderCountB).toBe(baselineB + 1);
+
+    compA.cleanup();
+    compB.cleanup();
+  });
+
   it("does not re-render after destroy()", async () => {
     let renderCount = 0;
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       renderCount++;
       return jsx("div", {});
     };
@@ -319,8 +359,8 @@ describe("defineComponent › props propagation", () => {
   it("propagates updater through vnode.data after internal re-render", async () => {
     let lastVal = 0;
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{ n: number }> = ({ n }, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{ n: number }> = ({ n }) => {
+      ctxRef = getCurrentHooksContext();
       lastVal = n;
       return jsx("div", {}, [`${n}`]);
     };
@@ -354,8 +394,8 @@ describe("defineComponent › props propagation", () => {
 describe("defineComponent › destroy", () => {
   it("sets isMounted() to false", () => {
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -366,8 +406,8 @@ describe("defineComponent › destroy", () => {
 
   it("fires onUnmounted callbacks on destroy()", async () => {
     const cb = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctx.onUnmounted(cb);
+    const fn: ComponentFn<{}> = (_p) => {
+      getCurrentHooksContext().onUnmounted(cb);
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -379,8 +419,8 @@ describe("defineComponent › destroy", () => {
 
   it("runs effect cleanups when destroying", async () => {
     const effectCleanup = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useEffect(ctx, () => effectCleanup, []);
+    const fn: ComponentFn<{}> = (_p) => {
+      useEffect(() => effectCleanup, []);
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -402,27 +442,27 @@ describe("defineComponent › destroy", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//   SECTION 7 – render() shorthand
+//   SECTION 7 – component() shorthand
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("defineComponent › render() shorthand", () => {
+describe("defineComponent › component() shorthand", () => {
   it("returns a VNode directly without an explicit instance", () => {
-    const MyComp = render<{ text: string }>(({ text }) => jsx("p", {}, [text]));
+    const MyComp =component<{ text: string }>(({ text }) => jsx("p", {}, [text]));
     const vnode = MyComp({ text: "hello" });
     expect(vnode.sel).toBe("p");
   });
 
   it("vnode carries _componentProps and _componentUpdateProps", () => {
-    const MyComp = render<{ n: number }>(({ n }) => jsx("span", {}, [`${n}`]));
+    const MyComp =component<{ n: number }>(({ n }) => jsx("span", {}, [`${n}`]));
     const vnode = MyComp({ n: 7 });
     const data = vnode.data as Record<string, unknown>;
     expect(data._componentProps).toMatchObject({ n: 7 });
     expect(typeof data._componentUpdateProps).toBe("function");
   });
 
-  it("children passed to render() are available via props.children", () => {
+  it("children passed to component() are available via props.children", () => {
     let capturedChildren: VNode[] | undefined;
-    const MyComp = render<{}>((props) => {
+    const MyComp =component<{}>((props) => {
       capturedChildren = props.children;
       return jsx("div", {});
     });
@@ -440,8 +480,8 @@ describe("defineComponent › useState integration", () => {
   it("state change triggers a re-render and reflects new value", async () => {
     let displayed = 0;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
       displayed = v;
       return jsx("div", {}, [`${v}`]);
@@ -457,10 +497,10 @@ describe("defineComponent › useState integration", () => {
     let renderCount = 0;
     let setA!: (v: number) => void;
     let setB!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
+    const fn: ComponentFn<{}> = (_p) => {
       renderCount++;
-      const [, sA] = useState(ctx, 0);
-      const [, sB] = useState(ctx, 0);
+      const [, sA] = useState(0);
+      const [, sB] = useState(0);
       setA = sA;
       setB = sB;
       return jsx("div", {});

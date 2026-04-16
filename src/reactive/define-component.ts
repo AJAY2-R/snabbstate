@@ -6,6 +6,10 @@ import { eventListenersModule } from "../modules/eventlisteners";
 import { propsModule } from "../modules/props";
 import { styleModule } from "../modules/style";
 import { VNode } from "../vnode";
+import {
+  popCurrentHooksContext,
+  pushCurrentHooksContext
+} from "./hooks-context";
 import type {
   ComponentFn,
   ComponentInstance,
@@ -23,6 +27,36 @@ export const patch = init([
   attributesModule
 ]);
 
+const globalUpdateQueue = new Set<() => void>();
+let isGlobalUpdateFlushScheduled = false;
+
+function flushGlobalUpdateQueue() {
+  isGlobalUpdateFlushScheduled = false;
+
+  const queuedTasks = Array.from(globalUpdateQueue);
+  globalUpdateQueue.clear();
+
+  for (const task of queuedTasks) {
+    try {
+      task();
+    } catch (err) {
+      console.error("[defineComponent] global update queue error:", err);
+    }
+  }
+
+  if (globalUpdateQueue.size > 0 && !isGlobalUpdateFlushScheduled) {
+    isGlobalUpdateFlushScheduled = true;
+    queueMicrotask(flushGlobalUpdateQueue);
+  }
+}
+
+function enqueueGlobalUpdate(task: () => void): void {
+  globalUpdateQueue.add(task);
+  if (isGlobalUpdateFlushScheduled) return;
+  isGlobalUpdateFlushScheduled = true;
+  queueMicrotask(flushGlobalUpdateQueue);
+}
+
 // Shallow equality for props comparison — avoids re-renders when parent creates
 // a new object with the same values on every render.
 function shallowEqual(
@@ -38,15 +72,9 @@ function shallowEqual(
   return true;
 }
 
-export function defineComponent<T>(
-  componentFn: ComponentFn<T>,
-  displayName?: string
-) {
+export function defineComponent<T>(componentFn: ComponentFn<T>, displayName?: string) {
   const _name = displayName ?? componentFn.name ?? "AnonymousComponent";
-  return function createInstance(
-    initialProps: ComponentProps<T>,
-    ...children: VNode[]
-  ): ComponentInstance {
+  return function createInstance(initialProps?: ComponentProps<T>, ...children: VNode[]): ComponentInstance {
     if (!initialProps) {
       initialProps = {} as ComponentProps<T>;
     }
@@ -69,8 +97,8 @@ export function defineComponent<T>(
     const elementNode = () => oldVNode!;
 
     const flushLayoutEffects = () => {
-      const effects = pendingLayoutEffects;
-      pendingLayoutEffects = [];
+      const effects = pendingLayoutEffects.slice();
+      pendingLayoutEffects.length = 0;
 
       effects.forEach((effect) => {
         if (effect.cleanup) {
@@ -85,8 +113,8 @@ export function defineComponent<T>(
 
     const flushEffects = () => {
       if (pendingEffects.length === 0) return;
-      const effects = pendingEffects;
-      pendingEffects = [];
+      const effects = pendingEffects.slice();
+      pendingEffects.length = 0;
       queueMicrotask(() => {
         if (!mounted) return;
         effects.forEach((effect) => {
@@ -101,10 +129,11 @@ export function defineComponent<T>(
       if (isUpdating) return;
       isUpdating = true;
       ctx.hookIndex = 0;
-      ctx.effects = [];
-      ctx.layoutEffects = [];
+      ctx.effects.length = 0;
+      ctx.layoutEffects.length = 0;
+      pushCurrentHooksContext(ctx);
       try {
-        const newVNode = componentFn(currentProps, ctx);
+        const newVNode = componentFn(currentProps);
         if (!oldVNode)
           throw new Error(`[${_name}] oldVNode is null during update`);
         if (newVNode.data) {
@@ -117,17 +146,20 @@ export function defineComponent<T>(
       } catch (err) {
         console.error(`[${_name}] render error:`, err);
       } finally {
+        popCurrentHooksContext();
         isUpdating = false;
       }
+    };
+
+    const runScheduledUpdate = () => {
+      updateScheduled = false;
+      if (mounted) doUpdate();
     };
 
     const scheduleUpdate = () => {
       if (updateScheduled || isUpdating) return;
       updateScheduled = true;
-      queueMicrotask(() => {
-        updateScheduled = false;
-        if (mounted) doUpdate();
-      });
+      enqueueGlobalUpdate(runScheduledUpdate);
     };
 
     const updatePropsAndSchedule = (newProps: ComponentProps<T>) => {
@@ -173,11 +205,14 @@ export function defineComponent<T>(
 
     ctx.hookIndex = 0;
     let vnode: VNode;
+    pushCurrentHooksContext(ctx);
     try {
-      vnode = componentFn(currentProps, ctx);
+      vnode = componentFn(currentProps);
     } catch (err) {
       console.error(`[${_name}] initial render error:`, err);
       vnode = { sel: "div", data: {}, children: [] } as unknown as VNode;
+    } finally {
+      popCurrentHooksContext();
     }
 
     const originalHook = vnode.data?.hook ?? {};
@@ -187,14 +222,17 @@ export function defineComponent<T>(
     (vnode.data as any)._componentUpdateProps = updatePropsAndSchedule;
 
     const cleanupAll = () => {
-      [...ctx.effects, ...ctx.layoutEffects].forEach((effect) => {
-        if (effect.cleanup) {
-          effect.cleanup();
-          effect.cleanup = undefined;
-        }
-      });
-      pendingEffects = [];
-      pendingLayoutEffects = [];
+      for (let i = 0; i < ctx.effects.length; i++) {
+        const effect = ctx.effects[i];
+        if (effect.cleanup) effect.cleanup();
+      }
+
+      for (let i = 0; i < ctx.layoutEffects.length; i++) {
+        const effect = ctx.layoutEffects[i];
+        if (effect.cleanup) effect.cleanup();
+      }
+      pendingEffects.length = 0;
+      pendingLayoutEffects.length = 0;
     };
 
     const performDestroy = () => {
@@ -257,13 +295,14 @@ export type ComponentRenderer<T> = (
   ...children: VNode[]
 ) => VNode;
 
-export function render<T>(componentFn: ComponentFn<T>): ComponentRenderer<T> {
+export function component<T>(componentFn: ComponentFn<T>): ComponentRenderer<T> {
   const createInstance = defineComponent(componentFn);
-  return function renderInstance(
-    props: ComponentProps<T>,
-    ...children: VNode[]
-  ): VNode {
+  return function renderInstance(props?: ComponentProps<T>, ...children: VNode[]): VNode {
     const instance = createInstance(props, ...children);
     return instance.vnode;
   };
+}
+
+export function render(vnode: VNode, elm: Element): void {
+  patch(elm, vnode);
 }

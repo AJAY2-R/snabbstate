@@ -39,7 +39,4 @@ export interface ComponentInstance {
 
 export type IUseState<T> = [T, (value: T) => void];
 export type ComponentProps<T> = T & { children?: VNode[] };
-export type ComponentFn<T> = (
-  props: ComponentProps<T>,
-  ctx: HooksContext
-) => VNode;
+export type ComponentFn<T> = (props: ComponentProps<T>) => VNode;

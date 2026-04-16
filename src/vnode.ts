@@ -33,6 +33,7 @@ export interface VNodeData<VNodeProps = Props> {
   fn?: () => VNode; // for thunks
   args?: any[]; // for thunks
   is?: string; // for custom elements v1
+  directives?: Record<string, any>; // for custom directives
   [key: string]: any; // for any other 3rd party module
 }
 

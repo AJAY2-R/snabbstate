@@ -30,7 +30,10 @@ import {
   onMounted,
   useIsMounted
 } from "./hooks.js";
-import { defineComponent, jsx, patch, VNode } from "../../build/index.js";
+import { getCurrentHooksContext } from "./hooks-context.js";
+import { defineComponent, patch } from "./define-component.js";
+import { jsx } from "../jsx.js";
+import { VNode } from "../vnode.js";
 
 // ── test helpers ──────────────────────────────────────────────────────────────
 
@@ -66,8 +69,8 @@ afterEach(() => {
 describe("useState", () => {
   it("returns the initial value", () => {
     let captured = -1;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v] = useState(ctx, 42);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v] = useState(42);
       captured = v;
       return jsx("div", {});
     };
@@ -77,8 +80,8 @@ describe("useState", () => {
 
   it("accepts a factory function for lazy initialisation", () => {
     let captured = -1;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v] = useState(ctx, () => 100);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v] = useState(() => 100);
       captured = v;
       return jsx("div", {});
     };
@@ -86,11 +89,11 @@ describe("useState", () => {
     expect(captured).toBe(100);
   });
 
-  it("updates state and triggers a batched re-render", async () => {
+  it("updates state and triggers a batched re-component", async () => {
     let count = 0;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
       count = v;
       return jsx("div", {}, [`${v}`]);
@@ -105,8 +108,8 @@ describe("useState", () => {
   it("supports the functional-update form (prev => next)", async () => {
     let count = 0;
     let setter!: (fn: (p: number) => number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState<number>(ctx, 10);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState<number>(10);
       setter = set as typeof setter;
       count = v;
       return jsx("div", {});
@@ -118,20 +121,20 @@ describe("useState", () => {
     cleanup();
   });
 
-  it("skips re-render when new value is Object.is-equal to current", async () => {
-    let renders = 0;
+  it("skips re-component when new value is Object.is-equal to current", async () => {
+    let components = 0;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [, set] = useState(ctx, 1);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [, set] = useState(1);
       setter = set;
-      renders++;
+      components++;
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
-    const before = renders;
-    setter(1); // same value → no re-render
+    const before = components;
+    setter(1); // same value → no re-component
     await flushAll();
-    expect(renders).toBe(before);
+    expect(components).toBe(before);
     cleanup();
   });
 });
@@ -141,25 +144,25 @@ describe("useState", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("useRef", () => {
-  it("persists its value across re-renders", async () => {
+  it("persists its value across re-components", async () => {
     let refCapture: { current: number | null } | null = null;
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
-      refCapture = useRef<number>(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
+      refCapture = useRef<number>(0);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
     refCapture!.current = 99;
-    ctxRef!._syncUpdate(); // re-render without touching the ref
+    ctxRef!._syncUpdate(); // re-component without touching the ref
     expect(refCapture!.current).toBe(99); // mutation survived
     cleanup();
   });
 
   it("is mutable", () => {
     let refCapture: { current: number | null } | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      refCapture = useRef<number>(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      refCapture = useRef<number>(0);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
@@ -175,8 +178,8 @@ describe("useRef", () => {
 describe("useMemo", () => {
   it("returns the computed value", () => {
     let result = 0;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      result = useMemo(ctx, () => 6 * 7, []);
+    const fn: ComponentFn<{}> = (_p) => {
+      result = useMemo(() => 6 * 7, []);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
@@ -186,10 +189,10 @@ describe("useMemo", () => {
   it("recomputes when deps change", async () => {
     let result = 0;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [f, setF] = useState(ctx, 2);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [f, setF] = useState(2);
       setter = setF;
-      result = useMemo(ctx, () => f * 10, [f]);
+      result = useMemo(() => f * 10, [f]);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -202,10 +205,10 @@ describe("useMemo", () => {
   it("does NOT recompute when deps are unchanged (empty [])", async () => {
     let factoryCallCount = 0;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [, set] = useState(0);
       setter = set;
-      useMemo(ctx, () => {
+      useMemo(() => {
         factoryCallCount++;
         return 1;
       }, []);
@@ -213,9 +216,9 @@ describe("useMemo", () => {
     };
     const { cleanup } = mountComponent(fn, {});
     setter(1);
-    await flushAll(); // re-render
+    await flushAll(); // re-component
     setter(2);
-    await flushAll(); // re-render again
+    await flushAll(); // re-component again
     expect(factoryCallCount).toBe(1); // computed only once
     cleanup();
   });
@@ -229,13 +232,13 @@ describe("useCallback", () => {
   it("returns the same function reference when deps are unchanged", async () => {
     const refs: ((...args: unknown[]) => unknown)[] = [];
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
-      refs.push(useCallback(ctx, () => {}, []));
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
+      refs.push(useCallback(() => {}, []));
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
-    ctxRef!._syncUpdate(); // second render
+    ctxRef!._syncUpdate(); // second component
     expect(refs[0]).toBe(refs[1]);
     cleanup();
   });
@@ -243,10 +246,10 @@ describe("useCallback", () => {
   it("recreates the function when deps change", async () => {
     const refs: ((...args: unknown[]) => unknown)[] = [];
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      refs.push(useCallback(ctx, () => v, [v]));
+      refs.push(useCallback(() => v, [v]));
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -264,8 +267,8 @@ describe("useCallback", () => {
 describe("useEffect", () => {
   it("runs after mount (scheduled as microtask, not synchronous)", async () => {
     const spy = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useEffect(ctx, spy, []);
+    const fn: ComponentFn<{}> = (_p) => {
+      useEffect(spy, []);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -276,13 +279,13 @@ describe("useEffect", () => {
     cleanup();
   });
 
-  it("runs exactly once for empty deps, regardless of re-renders", async () => {
+  it("runs exactly once for empty deps, regardless of re-components", async () => {
     const spy = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [, set] = useState(0);
       setter = set;
-      useEffect(ctx, spy, []);
+      useEffect(spy, []);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -295,13 +298,13 @@ describe("useEffect", () => {
     cleanup();
   });
 
-  it("re-runs when a dep changes between renders", async () => {
+  it("re-runs when a dep changes between components", async () => {
     const spy = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      useEffect(ctx, spy, [v]);
+      useEffect(spy, [v]);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -315,10 +318,10 @@ describe("useEffect", () => {
   it("calls the cleanup function before re-running the effect", async () => {
     const effectCleanup = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      useEffect(ctx, () => effectCleanup, [v]);
+      useEffect(() => effectCleanup, [v]);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -331,8 +334,8 @@ describe("useEffect", () => {
 
   it("calls the cleanup function when the component is destroyed", async () => {
     const effectCleanup = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useEffect(ctx, () => effectCleanup, []);
+    const fn: ComponentFn<{}> = (_p) => {
+      useEffect(() => effectCleanup, []);
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -345,10 +348,10 @@ describe("useEffect", () => {
   it("does not run effects after the component is destroyed", async () => {
     const spy = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      useEffect(ctx, spy, [v]);
+      useEffect(spy, [v]);
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -358,7 +361,7 @@ describe("useEffect", () => {
     inst.destroy();
     setter(1);
     await flushAll();
-    // Neither the initial mount effect nor the post-destroy re-render
+    // Neither the initial mount effect nor the post-destroy re-component
     // effect should have ran.
     expect(spy).not.toHaveBeenCalled();
     cleanup();
@@ -372,11 +375,11 @@ describe("useEffect", () => {
 describe("useLayoutEffect", () => {
   it("runs synchronously during mount (before async useEffect)", async () => {
     const order: string[] = [];
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useLayoutEffect(ctx, () => {
+    const fn: ComponentFn<{}> = (_p) => {
+      useLayoutEffect(() => {
         order.push("layout");
       }, []);
-      useEffect(ctx, () => {
+      useEffect(() => {
         order.push("effect");
       }, []);
       return jsx("div", {});
@@ -393,10 +396,10 @@ describe("useLayoutEffect", () => {
   it("calls cleanup before re-running on deps change", async () => {
     const layoutCleanup = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      useLayoutEffect(ctx, () => layoutCleanup, [v]);
+      useLayoutEffect(() => layoutCleanup, [v]);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -425,19 +428,19 @@ describe("useReducer", () => {
 
   it("initialises with the provided state", () => {
     let state = -1;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      [state] = useReducer(ctx, countReducer, 10);
+    const fn: ComponentFn<{}> = (_p) => {
+      [state] = useReducer(countReducer, 10);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
     expect(state).toBe(10);
   });
 
-  it("dispatches actions and re-renders", async () => {
+  it("dispatches actions and re-components", async () => {
     let state = 0;
     let dispatch!: (a: CountAction) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [s, d] = useReducer(ctx, countReducer, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [s, d] = useReducer(countReducer, 0);
       state = s;
       dispatch = d;
       return jsx("div", {});
@@ -452,27 +455,27 @@ describe("useReducer", () => {
     cleanup();
   });
 
-  it("skips re-render when the reduced state is unchanged", async () => {
-    let renders = 0;
+  it("skips re-component when the reduced state is unchanged", async () => {
+    let components = 0;
     let dispatch!: (a: CountAction) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      renders++;
-      const [, d] = useReducer(ctx, countReducer, 5);
+    const fn: ComponentFn<{}> = (_p) => {
+      components++;
+      const [, d] = useReducer(countReducer, 5);
       dispatch = d;
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
-    const before = renders;
+    const before = components;
     dispatch({ type: "set", value: 5 }); // same value
     await flushAll();
-    expect(renders).toBe(before);
+    expect(components).toBe(before);
     cleanup();
   });
 
   it("supports a lazy initialiser function", () => {
     let state = -1;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      [state] = useReducer(ctx, countReducer, () => 42);
+    const fn: ComponentFn<{}> = (_p) => {
+      [state] = useReducer(countReducer, () => 42);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
@@ -485,23 +488,23 @@ describe("useReducer", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("usePrevious", () => {
-  it("returns undefined on first render", () => {
+  it("returns undefined on first component", () => {
     let prev: number | undefined = 123;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      prev = usePrevious(ctx, 1);
+    const fn: ComponentFn<{}> = (_p) => {
+      prev = usePrevious(1);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
     expect(prev).toBeUndefined();
   });
 
-  it("returns the value from the previous render after re-render", async () => {
+  it("returns the value from the previous component after re-component", async () => {
     let prev: number | undefined;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 1);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(1);
       setter = set;
-      prev = usePrevious(ctx, v);
+      prev = usePrevious(v);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -520,20 +523,20 @@ describe("usePrevious", () => {
 describe("useId", () => {
   it("returns a non-empty string", () => {
     let id = "";
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      id = useId(ctx);
+    const fn: ComponentFn<{}> = (_p) => {
+      id = useId();
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
     expect(id).toBeTruthy();
   });
 
-  it("is stable across re-renders", () => {
+  it("is stable across re-components", () => {
     const ids: string[] = [];
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
-      ids.push(useId(ctx));
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
+      ids.push(useId());
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -544,8 +547,8 @@ describe("useId", () => {
 
   it("is unique across different component instances", () => {
     const ids: string[] = [];
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ids.push(useId(ctx));
+    const fn: ComponentFn<{}> = (_p) => {
+      ids.push(useId());
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
@@ -561,8 +564,8 @@ describe("useId", () => {
 describe("useImperativeHandle", () => {
   it("calls the ref callback with the created handle object", async () => {
     const ref = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useImperativeHandle(ctx, ref, () => ({ doThing: () => 42 }), []);
+    const fn: ComponentFn<{}> = (_p) => {
+      useImperativeHandle(ref, () => ({ doThing: () => 42 }), []);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -575,8 +578,8 @@ describe("useImperativeHandle", () => {
 
   it("calls ref with undefined on cleanup (when component is destroyed)", async () => {
     const ref = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useImperativeHandle(ctx, ref, () => ({ x: 1 }), []);
+    const fn: ComponentFn<{}> = (_p) => {
+      useImperativeHandle(ref, () => ({ x: 1 }), []);
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});
@@ -592,10 +595,10 @@ describe("useImperativeHandle", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("useWatch", () => {
-  it("does NOT fire on the initial render", async () => {
+  it("does NOT fire on the initial component", async () => {
     const spy = vi.fn();
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      useWatch(ctx, 0, spy);
+    const fn: ComponentFn<{}> = (_p) => {
+      useWatch(0, spy);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -607,10 +610,10 @@ describe("useWatch", () => {
   it("fires with (newValue, oldValue) when value changes", async () => {
     const spy = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 1);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(1);
       setter = set;
-      useWatch(ctx, v, spy);
+      useWatch(v, spy);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -623,10 +626,10 @@ describe("useWatch", () => {
   it("fires again for each subsequent change", async () => {
     const spy = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      useWatch(ctx, v, spy);
+      useWatch(v, spy);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -643,14 +646,14 @@ describe("useWatch", () => {
   it("does NOT fire when value is unchanged (Object.is)", async () => {
     const spy = vi.fn();
     let setter!: (v: string) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, "hello");
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState("hello");
       setter = set;
-      useWatch(ctx, v, spy);
+      useWatch(v, spy);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
-    setter("hello"); // same value — useState already skips the re-render
+    setter("hello"); // same value — useState already skips the re-component
     await flushAll();
     expect(spy).not.toHaveBeenCalled();
     cleanup();
@@ -659,10 +662,10 @@ describe("useWatch", () => {
   it("runs cleanup returned from the callback before the next invocation", async () => {
     const watchCleanup = vi.fn();
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      useWatch(ctx, v, () => watchCleanup);
+      useWatch(v, () => watchCleanup);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -681,16 +684,16 @@ describe("useWatch", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("useEvent", () => {
-  it("returns a stable function reference across re-renders", () => {
+  it("returns a stable function reference across re-components", () => {
     const refs: ((...args: unknown[]) => unknown)[] = [];
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
-      refs.push(useEvent(ctx, () => {}));
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
+      refs.push(useEvent(() => {}));
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
-    ctxRef!._syncUpdate(); // force second render
+    ctxRef!._syncUpdate(); // force second component
     expect(refs[0]).toBe(refs[1]);
     cleanup();
   });
@@ -698,16 +701,16 @@ describe("useEvent", () => {
   it("always delegates to the latest handler (no stale closure)", async () => {
     let stableHandler: (() => number) | null = null;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 0);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(0);
       setter = set;
-      stableHandler = useEvent(ctx, () => v);
+      stableHandler = useEvent(() => v);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
     setter(99);
     await flushAll();
-    // stableHandler identity is the same reference as captured on first render,
+    // stableHandler identity is the same reference as captured on first component,
     // but it returns the latest value
     expect(stableHandler!()).toBe(99);
     cleanup();
@@ -721,8 +724,8 @@ describe("useEvent", () => {
 describe("useDebounce", () => {
   it("returns the initial value synchronously", () => {
     let out = "";
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      out = useDebounce(ctx, "hello", 200);
+    const fn: ComponentFn<{}> = (_p) => {
+      out = useDebounce("hello", 200);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
@@ -733,10 +736,10 @@ describe("useDebounce", () => {
     vi.useFakeTimers();
     let output = "";
     let setter!: (v: string) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, "initial");
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState("initial");
       setter = set;
-      output = useDebounce(ctx, v, 300);
+      output = useDebounce(v, 300);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -754,10 +757,10 @@ describe("useDebounce", () => {
     vi.useFakeTimers();
     let output = "";
     let setter!: (v: string) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, "a");
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState("a");
       setter = set;
-      output = useDebounce(ctx, v, 200);
+      output = useDebounce(v, 200);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -782,8 +785,8 @@ describe("useDebounce", () => {
 describe("useThrottle", () => {
   it("returns the initial value synchronously", () => {
     let out = 0;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      out = useThrottle(ctx, 42, 100);
+    const fn: ComponentFn<{}> = (_p) => {
+      out = useThrottle(42, 100);
       return jsx("div", {});
     };
     mountComponent(fn, {}).cleanup();
@@ -794,10 +797,10 @@ describe("useThrottle", () => {
     vi.useFakeTimers();
     let output = 0;
     let setter!: (v: number) => void;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      const [v, set] = useState(ctx, 1);
+    const fn: ComponentFn<{}> = (_p) => {
+      const [v, set] = useState(1);
       setter = set;
-      output = useThrottle(ctx, v, 100);
+      output = useThrottle(v, 100);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
@@ -821,14 +824,14 @@ describe("onMounted / onUnmounted hooks", () => {
   it("onMounted fires once after DOM insertion", async () => {
     const spy = vi.fn();
     let ctxRef: HooksContext | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      ctxRef = ctx;
-      onMounted(ctx, spy);
+    const fn: ComponentFn<{}> = (_p) => {
+      ctxRef = getCurrentHooksContext();
+      onMounted(spy);
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
     await flushAll();
-    // Force two more re-renders — callback should NOT re-register
+    // Force two more re-components — callback should NOT re-register
     ctxRef!._syncUpdate();
     ctxRef!._syncUpdate();
     await flushAll();
@@ -844,8 +847,8 @@ describe("onMounted / onUnmounted hooks", () => {
 describe("useIsMounted", () => {
   it("returns false before mount, true after, false after destroy", () => {
     let isMountedFn: (() => boolean) | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
-      isMountedFn = useIsMounted(ctx);
+    const fn: ComponentFn<{}> = (_p) => {
+      isMountedFn = useIsMounted();
       return jsx("div", {});
     };
 
@@ -865,10 +868,10 @@ describe("useIsMounted", () => {
 
   it("guards async work after unmount", async () => {
     let capturedFn: (() => boolean) | null = null;
-    const fn: ComponentFn<{}> = (_p, ctx) => {
+    const fn: ComponentFn<{}> = (_p) => {
       // Capture the stable isMounted reference — this simulates how you'd
       // use it inside an async effect: fetch().then(() => { if (isMounted()) setState(...) })
-      capturedFn = useIsMounted(ctx);
+      capturedFn = useIsMounted();
       return jsx("div", {});
     };
     const { inst, cleanup } = mountComponent(fn, {});

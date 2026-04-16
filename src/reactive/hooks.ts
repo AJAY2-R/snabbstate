@@ -1,12 +1,11 @@
-import { type HooksContext, type RenderEffect } from "./models";
+import { getCurrentHooksContext } from "./hooks-context";
+import { type RenderEffect } from "./models";
 
 export type SetStateAction<T> = T | ((prev: T) => T);
 export type IUseState<T> = [T, (value: SetStateAction<T>) => void];
 
-export function useState<T>(
-  ctx: HooksContext,
-  initial: T | (() => T)
-): IUseState<T> {
+export function useState<T>(initial: T | (() => T)): IUseState<T> {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
 
   if (ctx.hookStates[index] === undefined) {
@@ -38,10 +37,10 @@ export function useState<T>(
  * - Examples: data fetching, subscriptions, timers
  */
 export function useEffect(
-  ctx: HooksContext,
   callback: () => void | (() => void),
   deps?: any[]
 ) {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
   const old = ctx.hookStates[index];
 
@@ -80,10 +79,10 @@ export function useEffect(
  * - Examples: measuring elements, synchronizing scroll position
  */
 export function useLayoutEffect(
-  ctx: HooksContext,
   callback: () => void | (() => void),
   deps?: any[]
 ) {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
   const old = ctx.hookStates[index];
 
@@ -119,9 +118,9 @@ export function useLayoutEffect(
  * Returns a mutable ref object whose .current property persists across renders
  */
 export function useRef<T>(
-  ctx: HooksContext,
   initial: T | null
 ): { current: T | null } {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
   if (!ctx.hookStates[index]) {
     ctx.hookStates[index] = { current: initial };
@@ -136,10 +135,10 @@ export function useRef<T>(
  * Memoizes a computed value and only recomputes it when dependencies change
  */
 export function useMemo<T>(
-  ctx: HooksContext,
   factory: () => T,
   deps?: any[]
 ): T {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
   const old = ctx.hookStates[index] || { value: undefined, deps: undefined };
   const hasChanged =
@@ -160,18 +159,18 @@ export function useMemo<T>(
  * Memoizes a callback function and only recreates it when dependencies change
  */
 export function useCallback<T extends (...args: any[]) => any>(
-  ctx: HooksContext,
   fn: T,
   deps?: unknown[]
 ): T {
-  return useMemo(ctx, () => fn, deps);
+  return useMemo(() => fn, deps);
 }
 
 /**
  * useForceUpdate hook
  * Forces the component to re-render
  */
-export function useForceUpdate(ctx: HooksContext) {
+export function useForceUpdate() {
+  const ctx = getCurrentHooksContext();
   ctx.update();
 }
 
@@ -181,12 +180,12 @@ export function useForceUpdate(ctx: HooksContext) {
  * - Use with Snabbdom hooks to assign the element
  */
 export function useElementRef<T extends HTMLElement | null>(
-  ctx: HooksContext,
   id?: string
 ): { current: T } {
-  const ref = useRef<T>(ctx, null);
+  const ctx = getCurrentHooksContext();
+  const ref = useRef<T>(null);
 
-  useLayoutEffect(ctx, () => {
+  useLayoutEffect(() => {
     const elm = ctx.vNode()?.elm as HTMLElement;
     ref.current = id ? (elm.querySelector(`#${id}`) as T) : (elm as T);
   }, [ctx.vNode(), id]);
@@ -199,11 +198,11 @@ export function useElementRef<T extends HTMLElement | null>(
  * Manages state using a reducer function
  */
 export function useReducer<State, Action>(
-  ctx: HooksContext,
   reducer: (state: State, action: Action) => State,
   initialArg: State | (() => State),
   init?: (arg: State | (() => State)) => State
 ): [State, (action: Action) => void] {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
 
   if (!ctx.hookStates[index]) {
@@ -236,9 +235,9 @@ export function useReducer<State, Action>(
  * usePrevious hook
  * Stores the previous value of a variable
  */
-export function usePrevious<T>(ctx: HooksContext, value: T): T | undefined {
-  const ref = useRef<T | undefined>(ctx, undefined);
-  useEffect(ctx, () => {
+export function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T | undefined>(undefined);
+  useEffect(() => {
     ref.current = value;
   }, [value]);
   return ref.current as T | undefined;
@@ -248,8 +247,8 @@ export function usePrevious<T>(ctx: HooksContext, value: T): T | undefined {
  * useSignal hook
  * Signal-like API on top of useState
  */
-export function useSignal<T>(ctx: HooksContext, initial: T) {
-  const [value, setValue] = useState<T>(ctx, initial);
+export function useSignal<T>(initial: T) {
+  const [value, setValue] = useState<T>(initial);
   return {
     get value() {
       return value;
@@ -265,14 +264,13 @@ export function useSignal<T>(ctx: HooksContext, initial: T) {
  * Exposes a custom instance value to parent via ref
  */
 export function useImperativeHandle<T>(
-  ctx: HooksContext,
   ref: ((instance: T | undefined) => void) | undefined,
   createHandle: () => T,
   deps?: any[]
 ) {
-  const handle = useMemo(ctx, createHandle, deps);
+  const handle = useMemo(createHandle, deps);
 
-  useLayoutEffect(ctx, () => {
+  useLayoutEffect(() => {
     if (ref) {
       ref(handle);
     }
@@ -290,7 +288,8 @@ export function useImperativeHandle<T>(
  */
 let globalIdCounter = 0;
 
-export function useId(ctx: HooksContext): string {
+export function useId(): string {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
 
   if (!ctx.hookStates[index]) {
@@ -307,13 +306,12 @@ export function useId(ctx: HooksContext): string {
  * Subscribes to external store updates
  */
 export function useSyncExternalStore<T>(
-  ctx: HooksContext,
   subscribe: (callback: () => void) => () => void,
   getSnapshot: () => T
 ): T {
-  const [state, setState] = useState(ctx, getSnapshot);
+  const [state, setState] = useState(getSnapshot);
 
-  useLayoutEffect(ctx, () => {
+  useLayoutEffect(() => {
     // Check if snapshot changed during render
     const currentSnapshot = getSnapshot();
     if (!Object.is(currentSnapshot, state)) {
@@ -336,10 +334,10 @@ export function useSyncExternalStore<T>(
  * Returns a deferred version of the value (updates with lower priority)
  * Note: This is a simplified version without true scheduling
  */
-export function useDeferredValue<T>(ctx: HooksContext, value: T): T {
-  const [deferredValue, setDeferredValue] = useState(ctx, value);
+export function useDeferredValue<T>(value: T): T {
+  const [deferredValue, setDeferredValue] = useState(value);
 
-  useEffect(ctx, () => {
+  useEffect(() => {
     // Defer update to next tick
     const timeoutId = setTimeout(() => {
       setDeferredValue(value);
@@ -357,9 +355,8 @@ export function useDeferredValue<T>(ctx: HooksContext, value: T): T {
  * Note: This is a simplified version without true concurrent mode
  */
 export function useTransition(
-  ctx: HooksContext
 ): [boolean, (callback: () => void) => void] {
-  const [isPending, setIsPending] = useState(ctx, false);
+  const [isPending, setIsPending] = useState(false);
 
   const startTransition = (callback: () => void) => {
     setIsPending(true);
@@ -386,10 +383,10 @@ export function useTransition(
  * });
  */
 export function useWatch<T>(
-  ctx: HooksContext,
   value: T,
   callback: (newValue: T, oldValue: T) => void | (() => void)
 ): void {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
   ctx.hookIndex++;
 
@@ -436,15 +433,13 @@ export function useWatch<T>(
  * // handleClick identity is stable; always logs latest `count`
  */
 export function useEvent<T extends (...args: any[]) => any>(
-  ctx: HooksContext,
   handler: T
 ): T {
-  const handlerRef = useRef<T>(ctx, handler);
+  const handlerRef = useRef<T>(handler);
   // Always point to the latest handler without causing a re-render
   handlerRef.current = handler;
   // The wrapper never changes identity (empty deps)
   return useMemo(
-    ctx,
     () => ((...args: Parameters<T>) => handlerRef.current!(...args)) as T,
     []
   );
@@ -455,10 +450,10 @@ export function useEvent<T extends (...args: any[]) => any>(
  * Returns a debounced copy of `value` that only updates after `delay` ms of
  * inactivity. Useful for search inputs, resize handlers, etc.
  */
-export function useDebounce<T>(ctx: HooksContext, value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(ctx, value);
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  useEffect(ctx, () => {
+  useEffect(() => {
     const id = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(id);
   }, [value, delay]);
@@ -470,11 +465,11 @@ export function useDebounce<T>(ctx: HooksContext, value: T, delay: number): T {
  * useThrottle
  * Returns a throttled copy of `value` that updates at most once every `limit` ms.
  */
-export function useThrottle<T>(ctx: HooksContext, value: T, limit: number): T {
-  const [throttledValue, setThrottledValue] = useState(ctx, value);
-  const lastRan = useRef<number>(ctx, 0);
+export function useThrottle<T>(value: T, limit: number): T {
+  const [throttledValue, setThrottledValue] = useState(value);
+  const lastRan = useRef<number>(0);
 
-  useEffect(ctx, () => {
+  useEffect(() => {
     const elapsed = Date.now() - (lastRan.current ?? 0);
     if (elapsed >= limit) {
       lastRan.current = Date.now();
@@ -496,7 +491,8 @@ export function useThrottle<T>(ctx: HooksContext, value: T, limit: number): T {
  * Registers a one-time callback that fires after the component is inserted
  * into the DOM. The callback is registered only on the first render.
  */
-export function onMounted(ctx: HooksContext, cb: () => void): void {
+export function onMounted(cb: () => void): void {
+  const ctx = getCurrentHooksContext();
   const index = ctx.hookIndex;
   ctx.hookIndex++;
   if (!ctx.hookStates[index]) {
@@ -530,6 +526,7 @@ export function onMounted(ctx: HooksContext, cb: () => void): void {
  *     fetchData().then(data => { if (isMounted()) setState(data); });
  * }, []);
  */
-export function useIsMounted(ctx: HooksContext): () => boolean {
+export function useIsMounted(): () => boolean {
+  const ctx = getCurrentHooksContext();
   return ctx.isMounted;
 }
