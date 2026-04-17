@@ -6,6 +6,7 @@ import { Attrs } from "./modules/attributes";
 import { Classes } from "./modules/class";
 import { Props } from "./modules/props";
 import { Dataset } from "./modules/dataset";
+import { DirectiveRegistry } from "./modules/directive";
 
 export type Key = PropertyKey;
 
@@ -16,6 +17,7 @@ export interface VNode {
   elm: Node | undefined;
   text: string | undefined;
   key: Key | undefined;
+  directives?: Record<string, any>;
 }
 
 export interface VNodeData<VNodeProps = Props> {
@@ -45,5 +47,17 @@ export function vnode(
   elm: Element | DocumentFragment | Text | undefined
 ): VNode {
   const key = data === undefined ? undefined : data.key;
-  return { sel, data, children, text, elm, key };
+  const directives: Record<string, any> = {};
+  initializeDirectives(data, directives);
+  return { sel, data, children, text, elm, key, directives };
 }
+
+function initializeDirectives(data: any, directives: Record<string, any>) {
+  Object.keys(data || {}).forEach(key => {
+    const directive = DirectiveRegistry.get(key);
+    if (directive) {
+      directives[key] = directive;
+    }
+  });
+}
+

@@ -97,12 +97,12 @@ describe("defineComponent › initial render", () => {
   });
 
   it("catches initial render errors and logs them (does not throw)", () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => { });
     const fn: ComponentFn<{}> = () => {
       throw new Error("kaboom");
     };
     expect(() =>
-      defineComponent(fn, "CrashTest")({} as ComponentProps<{}>)
+      defineComponent(fn, [], "CrashTest")({} as ComponentProps<{}>)
     ).not.toThrow();
     expect(spy).toHaveBeenCalledWith(
       expect.stringContaining("CrashTest"),
@@ -112,11 +112,11 @@ describe("defineComponent › initial render", () => {
   });
 
   it("includes displayName in error messages", () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => { });
     const fn: ComponentFn<{}> = () => {
       throw new Error("x");
     };
-    defineComponent(fn, "MyWidget")({} as ComponentProps<{}>);
+    defineComponent(fn, [], "MyWidget")({} as ComponentProps<{}>);
     expect((spy.mock.calls[0] as string[])[0]).toContain("MyWidget");
     spy.mockRestore();
   });
@@ -208,7 +208,7 @@ describe("defineComponent › _syncUpdate", () => {
       return jsx("div", {});
     };
     const { cleanup } = mountComponent(fn, {});
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => { });
     crash = true;
     expect(() => ctxRef!._syncUpdate()).not.toThrow();
     expect(spy).toHaveBeenCalled();
@@ -447,13 +447,13 @@ describe("defineComponent › destroy", () => {
 
 describe("defineComponent › component() shorthand", () => {
   it("returns a VNode directly without an explicit instance", () => {
-    const MyComp =component<{ text: string }>(({ text }) => jsx("p", {}, [text]));
+    const MyComp = component<{ text: string }>(({ text }) => jsx("p", {}, [text]));
     const vnode = MyComp({ text: "hello" });
     expect(vnode.sel).toBe("p");
   });
 
   it("vnode carries _componentProps and _componentUpdateProps", () => {
-    const MyComp =component<{ n: number }>(({ n }) => jsx("span", {}, [`${n}`]));
+    const MyComp = component<{ n: number }>(({ n }) => jsx("span", {}, [`${n}`]));
     const vnode = MyComp({ n: 7 });
     const data = vnode.data as Record<string, unknown>;
     expect(data._componentProps).toMatchObject({ n: 7 });
@@ -462,7 +462,7 @@ describe("defineComponent › component() shorthand", () => {
 
   it("children passed to component() are available via props.children", () => {
     let capturedChildren: VNode[] | undefined;
-    const MyComp =component<{}>((props) => {
+    const MyComp = component<{}>((props) => {
       capturedChildren = props.children;
       return jsx("div", {});
     });

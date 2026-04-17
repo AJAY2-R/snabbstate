@@ -91,7 +91,7 @@ describe("factory & instance creation", () => {
   });
 
   bench("create instance with displayName", () => {
-    const factory = defineComponent(simpleFn, "BenchComponent");
+    const factory = defineComponent(simpleFn, [], "BenchComponent");
     factory({ n: 1 } as ComponentProps<{ n: number }>);
   });
 });
@@ -109,7 +109,7 @@ describe("mount + destroy cycle", () => {
 
   bench("component with effect cleanup", () => {
     const fn: ComponentFn<{}> = (_p) => {
-      useEffect(() => () => {}, []);
+      useEffect(() => () => { }, []);
       return jsx("div", {}, ["effect"]);
     };
     const m = mount(fn, {});
@@ -118,7 +118,7 @@ describe("mount + destroy cycle", () => {
 
   bench("component with layout effect cleanup", () => {
     const fn: ComponentFn<{}> = (_p) => {
-      useLayoutEffect(() => () => {}, []);
+      useLayoutEffect(() => () => { }, []);
       return jsx("div", {}, ["layout"]);
     };
     const m = mount(fn, {});
@@ -130,7 +130,7 @@ describe("mount + destroy cycle", () => {
       const [v] = useState(0);
       const r = useRef(null);
       const memo = useMemo(() => v * 2, [v]);
-      useEffect(() => {}, []);
+      useEffect(() => { }, []);
       useCallback(() => memo, [memo]);
       void r;
       return jsx("div", {}, [`${v}`]);
@@ -374,7 +374,7 @@ describe("hook-heavy component components", () => {
 
   bench("initial component with 20 useEffect hooks", () => {
     const fn: ComponentFn<{}> = (_p) => {
-      for (let i = 0; i < 20; i++) useEffect(() => {}, [i]);
+      for (let i = 0; i < 20; i++) useEffect(() => { }, [i]);
       return jsx("div", {});
     };
     defineComponent(fn)({} as ComponentProps<{}>);

@@ -2,6 +2,7 @@ import { init } from "../init";
 import { attributesModule } from "../modules/attributes";
 import { classModule } from "../modules/class";
 import { datasetModule } from "../modules/dataset";
+import { directiveModules } from "../modules/directive";
 import { eventListenersModule } from "../modules/eventlisteners";
 import { propsModule } from "../modules/props";
 import { styleModule } from "../modules/style";
@@ -24,7 +25,8 @@ export const patch = init([
   styleModule,
   eventListenersModule,
   datasetModule,
-  attributesModule
+  attributesModule,
+  directiveModules
 ]);
 
 const globalUpdateQueue = new Set<() => void>();
@@ -72,7 +74,7 @@ function shallowEqual(
   return true;
 }
 
-export function defineComponent<T>(componentFn: ComponentFn<T>, displayName?: string) {
+export function defineComponent<T>(componentFn: ComponentFn<T>, modules?: any[], displayName?: string): (props?: ComponentProps<T>, ...children: VNode[]) => ComponentInstance {
   const _name = displayName ?? componentFn.name ?? "AnonymousComponent";
   return function createInstance(initialProps?: ComponentProps<T>, ...children: VNode[]): ComponentInstance {
     if (!initialProps) {
@@ -292,10 +294,9 @@ export function defineComponent<T>(componentFn: ComponentFn<T>, displayName?: st
 
 export type ComponentRenderer<T> = (props?: ComponentProps<T>, ...children: VNode[]) => VNode;
 
-export function component<T>(componentFn: ComponentFn<T>): ComponentRenderer<T> {
-  const createInstance = defineComponent(componentFn);
+export function component<T>(componentFn: ComponentFn<T>, modules?: any[]): ComponentRenderer<T> {
   return function renderInstance(props?: ComponentProps<T>, ...children: VNode[]): VNode {
-    const instance = createInstance(props, ...children);
+    const instance = defineComponent(componentFn, modules)(props, ...children);
     return instance.vnode;
   };
 }

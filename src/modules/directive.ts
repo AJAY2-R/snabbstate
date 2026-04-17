@@ -1,6 +1,8 @@
-import { Hooks } from "../hooks";
+import { VNode } from "../vnode";
+import { Class } from "../helpers/class";
+
 export class DirectiveRegistry {
-    private static directives: Map<string, IDirective>;
+    private static directives: Map<string, IDirective> = new Map();
     public static register(name: string, directive: IDirective) {
         if (this.directives.has(name)) {
             throw new Error(`Directive with name ${name} already exists`);
@@ -12,15 +14,59 @@ export class DirectiveRegistry {
     }
 }
 
-export interface IDirective extends Hooks {
+export interface IDirective<T = unknown> {
+    init?(vnode: VNode): void;
+    create?(value: T, oldVNode: VNode, newVNode: VNode): void;
+    update?(value: T, oldVNode: VNode, newVNode: VNode): void;
+    destroy?(vnode: VNode): void;
+    remove?(vnode: VNode, removeCallback: () => void): void;
+}
+
+export abstract class Directive<T> implements IDirective<T> {
+}
+
+export function directive(name: string) {
+    return function (target: Class<IDirective>) {
+        DirectiveRegistry.register(name, new target());
+    };
 }
 
 
-export abstract class Directive implements IDirective {
+export const directiveModules = {
+    init: (vnode: VNode) => {
+        invokeDirectives(vnode, directive => {
+            directive.init?.(vnode);
+        });
+    },
+    create: (oldVNode: VNode, newVNode: VNode) => {
+        invokeDirectives(newVNode, (directive, value) => {
+            directive.create?.(value, oldVNode, newVNode);
+        });
+    },
+    update: (oldVNode: VNode, newVNode: VNode) => {
+        invokeDirectives(newVNode, (directive, value) => {
+            directive.update?.(value, oldVNode, newVNode);
+        });
+    },
+    destroy: (vnode: VNode) => {
+        invokeDirectives(vnode, (directive, value) => {
+            directive.destroy?.(vnode);
+        });
+    },
+    remove: (vnode: VNode, removeCallback: () => void) => {
+        invokeDirectives(vnode, (directive, value) => {
+            directive.remove?.(vnode, removeCallback);
+        });
+        removeCallback();
+    }
 }
 
-export type Class<T> = new (...args: any[]) => T;
-
-export function directive(name: string, directive: Class<IDirective>) {
-    DirectiveRegistry.register(name, new directive());
+function invokeDirectives(node: VNode, fn: (directive: IDirective, value: unknown) => void) {
+    const directives = node.directives || {};
+    Object.keys(directives).forEach(key => {
+        const directive = directives[key] as IDirective;
+        const value = node.data?.[key];
+        fn(directive, value);
+    });
+    return directives;
 }
